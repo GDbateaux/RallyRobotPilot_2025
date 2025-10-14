@@ -18,6 +18,7 @@ Requires-Dist: PyQt6==6.7.1
 Requires-Dist: Flask==3.0.3
 Requires-Dist: psd-tools3==1.8.2
 Requires-Dist: setuptools
+Requires-Dist: torch==2.8.0
 Dynamic: author
 Dynamic: classifier
 Dynamic: description

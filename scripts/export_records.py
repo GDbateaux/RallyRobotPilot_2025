@@ -25,7 +25,7 @@ if __name__ == "__main__":
             [f"pos_{i}" for i in range(3)] +
             ["speed", "angle"] +
             [f"ray_{i}" for i in range(n_rays)] +
-            [f"ctrl_{i}" for i in range(n_ctrls)]
+            ["Forward", "Backward", "Left", "Right"]
         )
         writer.writerow(header)
 
