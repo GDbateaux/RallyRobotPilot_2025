@@ -1,4 +1,8 @@
+import torch
+import numpy as np
 
+from pathlib import Path
+from model import NeuralNetwork
 
 from PyQt6 import QtWidgets
 
@@ -18,25 +22,56 @@ Be warned that this could also cause crash on the client side if socket sending 
 
 class ExampleNNMsgProcessor:
     def __init__(self):
-        self.always_forward = True
+        self.model = NeuralNetwork()
+        model_path = Path(__file__).resolve().parent.parent / "rally_model.pth"
+        checkpoint = torch.load(model_path, weights_only=False)
+        self.model.load_state_dict(checkpoint["model_state_dict"])
+        self.model.eval()
 
-    def nn_infer(self, message: SensingSnapshot):
-        #   Do smart NN inference here
-        print(message.raycast_distances)
+        self.scaler = checkpoint.get("scaler", None)
 
+        th = np.array([0.5, 0.5, 0.5, 0.5], dtype=np.float32)
+        self.thresholds = torch.tensor(th, dtype=torch.float32)
 
-        return [("forward", True)]
+        self.actions = ["forward", "back", "left", "right"]
+        self.state = {name: False for name in self.actions}
+
+    def nn_infer(self, message):
+        rays = torch.tensor(message.raycast_distances, dtype=torch.float32)
+        speed = torch.tensor([message.car_speed], dtype=torch.float32)
+        x = torch.cat([speed, rays])
+        x_np = x.unsqueeze(0).numpy()
+        x_np = self.scaler.transform(x_np)
+        x = torch.tensor(x_np, dtype=torch.float32)
+
+        with torch.no_grad():
+            logits = self.model(x)
+        probs = torch.sigmoid(logits).squeeze(0)
+
+        actions = ["forward", "back", "left", "right"]
+        threshold = 0.5
+
+        decisions = [p > threshold for p in probs]
+
+        if decisions[0] and decisions[1]:
+            decisions[0] = probs[0] > probs[1]
+            decisions[1] = probs[1] > probs[0]
+        if decisions[2] and decisions[3]:
+            decisions[2] = probs[2] > probs[3]
+            decisions[3] = probs[3] > probs[2]
+        
+        commands = [(actions[i], d) for i, d in enumerate(decisions)]
+        return commands
 
     def process_message(self, message, data_collector):
         commands = self.nn_infer(message)
-
         for command, start in commands:
             data_collector.onCarControlled(command, start)
 
 if  __name__ == "__main__":
     import sys
     def except_hook(cls, exception, traceback):
-        sys.__excepthook__(cls, exception, traceback)
+        sys._excepthook_(cls, exception, traceback)
     sys.excepthook = except_hook
 
     app = QtWidgets.QApplication(sys.argv)

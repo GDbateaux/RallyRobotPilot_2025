@@ -120,7 +120,7 @@ class DataCollectionUI(QtWidgets.QMainWindow):
 
         self.saveRecordButton.setText("Saving ...")
 
-        record_name = "record_%d.npz"
+        record_name = "records/record_%d.npz"
         fid = 0
         while os.path.exists(record_name % fid):
             fid += 1
