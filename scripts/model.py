@@ -5,7 +5,6 @@ from pathlib import Path
 from sklearn.preprocessing import StandardScaler
 from torch.utils.data import TensorDataset, DataLoader
 import matplotlib.pyplot as plt
-import pandas as pd  # optional, only for saving the curve as CSV
 
 
 
@@ -54,7 +53,7 @@ y = df.select('Forward', 'Backward', 'Left', 'Right').to_numpy()
 
 SHIFT = 1
 if len(X) <= SHIFT:
-    raise RuntimeError("Pas assez d'échantillons pour appliquer SHIFT=2.")
+    raise RuntimeError(f"Pas assez d'échantillons pour appliquer SHIFT={SHIFT}.")
 X = X[:-SHIFT]
 y = y[SHIFT:]
 
@@ -89,7 +88,7 @@ loss_fn = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
 model = NeuralNetwork()
 optimizer = torch.optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-3)
-epochs = 40
+epochs = 80
 
 # for loss curve plotting
 train_hist = []
