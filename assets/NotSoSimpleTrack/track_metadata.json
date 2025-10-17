@@ -1,0 +1,28 @@
+{
+    "track_model": "NSTrack.obj",
+    "track_texture": "RoadMockup.png",
+
+    "origin_position": [ 0, 0, 0],
+    "origin_rotation": [  0, 0, 0 ],
+    "origin_scale": [ 0.66, 0.66, 0.66 ],
+
+    "car_default_reset_position": [ 0, 1, 0 ],
+    "car_default_reset_orientation": [ 0, -90, 0 ],
+
+    "finish_line_position": [ 31, -48, 72 ],
+    "finish_line_rotation": [ 0, 0, 0 ],
+    "finish_line_scale": [ 3, 8, 30 ],
+
+    "details": [
+        {
+            "model": "NSEnvironment.obj",
+            "texture": "generalTex.png"
+        }
+    ], 
+    "obstacles": [
+        {
+            "model": "NSObstacles.obj",
+            "texture": "generalTex.png"
+        }
+    ]
+}
