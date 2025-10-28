@@ -10,6 +10,6 @@ flask_thread = Thread(target=flask_app.run, kwargs={'host': "0.0.0.0", 'port': 5
 print("Flask server running on port 5000")
 flask_thread.start()
 
-app, car = prepare_game_app("VisualTrack/track_circuit2_metadata.json")
+app, car = prepare_game_app("SimpleTrack")
 remote_controller = RemoteController(car = car, connection_port=7654, flask_app=flask_app)
 app.run()
