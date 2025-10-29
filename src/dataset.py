@@ -19,7 +19,10 @@ class DrivingDataset(Dataset):
                 data = pickle.load(file)
             
             for e in data:
-                all_images.append(e.image)
+                img = e.image.astype(np.float32) / 255.0
+                img = cv2.resize(img, (200, 150))
+                img = np.transpose(img, (2, 0, 1))
+                all_images.append(img)
                 all_controls.append(e.current_controls)
         self.images = np.array(all_images)
         self.controls = np.array(all_controls, dtype=np.float32)
@@ -30,10 +33,6 @@ class DrivingDataset(Dataset):
     def __getitem__(self, idx):
         img = self.images[idx]
         ctrl = self.controls[idx]
-
-        img = img.astype(np.float32) / 255.0
-        img = cv2.resize(img, (200, 150))
-        img = np.transpose(img, (2, 0, 1))
 
         img = torch.from_numpy(img)
         ctrl = torch.from_numpy(ctrl)
