@@ -1,23 +1,39 @@
-# docker-compose.yaml
-services:
-  #   gui:
-  #     build:
-  #       context: .
-  #       dockerfile: Dockerfile.gui
-  #     environment:
-  #       DISPLAY: ${DISPLAY}
-  #     network_mode: host
-  #     volumes:
-  #       - ${XAUTHORITY}:/root/.Xauthority
-  #       - /tmp/.X11-unix:/tmp/.X11-unix
-  #     devices:
-  #       - "/dev/dri/card0:/dev/dri/card0"
+## docker-compose.yaml
+#services:
+#  #   gui:
+#  #     build:
+#  #       context: .
+#  #       dockerfile: Dockerfile.gui
+#  #     environment:
+#  #       DISPLAY: ${DISPLAY}
+#  #     network_mode: host
+#  #     volumes:
+#  #       - ${XAUTHORITY}:/root/.Xauthority
+#  #       - /tmp/.X11-unix:/tmp/.X11-unix
+#  #     devices:
+#  #       - "/dev/dri/card0:/dev/dri/card0"
+#
+#  headless:
+#    build:
+#      context: .
+#      dockerfile: Dockerfile.headless
+#      network: host
+#    network_mode: host
+#    stdin_open: true                # Keep stdin open even if not attached
+#    tty: true                       # Allocate a pseudo-TTY
+#    ports:
+#      - 5000:
+#
 
-  headless:
-    build:
-      context: .
-      dockerfile: Dockerfile.headless
-    stdin_open: true                # Keep stdin open even if not attached
-    tty: true                       # Allocate a pseudo-TTY
-    ports:
-      - 5000:5000
+  services:
+    headless:
+      build:
+        context: .
+        dockerfile: Dockerfile.headless
+        network: host          # Use host network during build
+      network_mode: host       # Use host network at runtime
+      stdin_open: true         # Keep stdin open even if not attached
+      tty: true                # Allocate a pseudo-TTY
+      ports:
+        - 5000:5000
+

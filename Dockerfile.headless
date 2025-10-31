@@ -1,7 +1,17 @@
 # Dockerfile
 FROM debian:bookworm-slim
-RUN apt-get -y update
-RUN apt install libgl1-mesa-glx -y
+# RUN apt-get -y update
+# RUN apt install libgl1-mesa-glx -y
+
+RUN echo "deb http://deb.debian.net/debian bookworm main contrib non-free" > /etc/apt/sources.list \
+ && echo "deb http://deb.debian.net/debian bookworm-updates main contrib non-free" >> /etc/apt/sources.list \
+ && echo "deb http://security.debian.net/debian-security bookworm-security main contrib non-free" >> /etc/apt/sources.list \
+ && apt-get update && apt-get install -y libgl1 ffmpeg libsm6 libxext6 xvfb libgl1-mesa-dri mesa-utils git python3-pip python3-venv \
+ && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+
+
+# RUN apt-get update && apt-get install -y libgl1
 RUN apt-get install 'ffmpeg'\
     'libsm6'\
     'libxext6'  -y

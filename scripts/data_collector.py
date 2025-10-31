@@ -47,7 +47,9 @@ class DataCollectionUI(QtWidgets.QMainWindow):
 
         self.timer = QTimer()
         self.timer.timeout.connect(self.network_interface.recv_msg)
-        self.timer.start(25)
+        # self.timer.start(25)
+        self.timer.start(50)
+
 
         self.saving_worker = None
 

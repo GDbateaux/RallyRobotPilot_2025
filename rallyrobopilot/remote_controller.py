@@ -86,7 +86,7 @@ class RemoteController(Entity):
             image = data.reshape(tex.getYSize(), tex.getXSize(), 3)
             image = image[::-1, :, :]#   Image arrives with inverted Y axis
 
-            snapshot.image = image
+            snapshot.image = None
 
             msg_mngr = SensingSnapshotManager()
             data = msg_mngr.pack(snapshot)
@@ -97,7 +97,7 @@ class RemoteController(Entity):
             except socket.error as e:
                 print(f"Socket error: {e}")
 
-            self.last_sensing = time.time()
+            # self.last_sensing = time.time()
 
     def get_sensing_data(self):
         current_controls = (held_keys['w'] or held_keys["up arrow"],
@@ -221,3 +221,4 @@ class RemoteController(Entity):
         # self.listen_socket.setblocking(False)
         self.listen_socket.settimeout(0.01)
         self.listen_socket.listen()
+

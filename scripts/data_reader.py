@@ -6,7 +6,7 @@ if __name__ == "__main__":
     import lzma
 
 
-    with lzma.open("record_0.npz", "rb") as file:
+    with lzma.open("old_data.bak", "rb") as file:
         data = pickle.load(file)
 
         print("Read", len(data), "snapshotwas")

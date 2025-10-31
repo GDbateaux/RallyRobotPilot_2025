@@ -281,6 +281,24 @@ class Car(Entity):
 
 
     def update(self):
+
+        time.dt = 0.1
+
+
+        # Debug: Print actual frame rate
+        if not hasattr(self, 'frame_counter'):
+            self.frame_counter = 0
+            self.fps_timer = time.time()
+
+        self.frame_counter += 1
+        if self.frame_counter % 10 == 0:
+            elapsed = time.time() - self.fps_timer
+            actual_fps = 10 / elapsed
+            print(f"Game FPS: {actual_fps:.2f} (should be 10)")
+            self.fps_timer = time.time()
+
+
+
         # Exit if esc pressed.
         if held_keys["escape"]:
             quit()
