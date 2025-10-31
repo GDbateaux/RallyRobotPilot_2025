@@ -1,0 +1,46 @@
+# Dockerfile
+FROM debian:bookworm-slim
+RUN apt-get -y update
+RUN apt install libgl1-mesa-glx -y
+RUN apt-get install 'ffmpeg'\
+    'libsm6'\
+    'libxext6'  -y
+
+# Headless part.
+RUN apt-get update -y \
+  && apt-get install --no-install-recommends -y xvfb libgl1-mesa-dri
+  
+WORKDIR /usr/bin
+COPY xvfb-startup.sh .
+
+RUN sed -i 's/\r$//' xvfb-startup.sh
+ARG RESOLUTION="1920x1080x24"
+ENV XVFB_RES="${RESOLUTION}"
+ARG XARGS=""
+ENV XVFB_ARGS="${XARGS}"
+ENTRYPOINT ["/bin/bash", "xvfb-startup.sh"]
+
+RUN apt-get update -y \
+  && apt-get install --no-install-recommends -y mesa-utils
+
+# Rally part.
+WORKDIR /app
+RUN apt-get update && apt-get install -y git && apt-get clean
+# RUN git clone https://gitlab.hevs.ch/louis.lettry/rallyrobopilot.git .
+# RUN git checkout cedric
+COPY . .
+
+RUN set -xe \
+    && apt-get update \
+    && apt-get install -y python3-pip  \
+    && apt-get install -y python3-venv
+
+# Set env path. 
+ENV VIRTUAL_ENV=/opt/venv
+RUN python3 -m venv $VIRTUAL_ENV
+ENV PATH="$VIRTUAL_ENV/bin:$PATH"
+RUN pip install --upgrade pip && pip install --no-cache-dir -r requirements.txt
+RUN pip install python3_xlib
+RUN pip install -e .
+
+CMD ["python", "scripts/main.py"]
