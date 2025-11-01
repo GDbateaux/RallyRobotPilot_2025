@@ -2,10 +2,10 @@ import numpy as np
 import pickle
 import torch
 import lzma
-import cv2
 
 from pathlib import Path
 from torch.utils.data import Dataset
+from src.utils import preprocess_image
 
 
 class DrivingDataset(Dataset):
@@ -19,9 +19,7 @@ class DrivingDataset(Dataset):
                 data = pickle.load(file)
             
             for e in data:
-                img = e.image.astype(np.float32) / 255.0
-                img = cv2.resize(img, (200, 150))
-                img = np.transpose(img, (2, 0, 1))
+                img = preprocess_image(e.image, to_tensor=False)
                 all_images.append(img)
                 all_controls.append(e.current_controls)
         self.images = np.array(all_images)
@@ -31,11 +29,7 @@ class DrivingDataset(Dataset):
         return len(self.images)
 
     def __getitem__(self, idx):
-        img = self.images[idx]
-        ctrl = self.controls[idx]
-
-        img = torch.from_numpy(img)
-        ctrl = torch.from_numpy(ctrl)
-
+        img = torch.from_numpy(self.images[idx])
+        ctrl = torch.from_numpy(self.controls[idx])
         return img, ctrl
     

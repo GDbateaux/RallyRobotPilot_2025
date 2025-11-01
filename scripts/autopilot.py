@@ -1,12 +1,11 @@
 import torch
-import cv2
-import numpy as np
 
 from PyQt6 import QtWidgets
 
 from scripts.data_collector import DataCollectionUI
 from src.model import DrivingCNN
 from pathlib import Path
+from src.utils import preprocess_image
 
 """
 This file is provided as an example of what a simplistic controller could be done.
@@ -20,7 +19,7 @@ Be warned that this could also cause crash on the client side if socket sending 
 """
 
 
-class ExampleNNMsgProcessor:
+class CNNMsgProcessor:
     def __init__(self, device="cpu"):
         self.device = torch.device(device)
         
@@ -32,18 +31,10 @@ class ExampleNNMsgProcessor:
         self.model.load_state_dict(state)
         self.model.eval()
 
-    def preprocess_image(self, img_bgr: np.ndarray) -> torch.Tensor:
-        img_resized = cv2.resize(img_bgr, (200, 150)).astype(np.float32)
-        img_resized = img_resized / 255.0
-        img_chw = np.transpose(img_resized, (2, 0, 1))
-        tensor = torch.from_numpy(img_chw).unsqueeze(0)
-        tensor = tensor.to(self.device)
-        return tensor
-
     def nn_infer(self, message):
         frame = message.image
 
-        inp = self.preprocess_image(frame)
+        inp = preprocess_image(frame).unsqueeze(0).to(self.device)
 
         with torch.no_grad():
             pred = self.model(inp)
@@ -80,7 +71,7 @@ if  __name__ == "__main__":
 
     app = QtWidgets.QApplication(sys.argv)
 
-    nn_brain = ExampleNNMsgProcessor()
+    nn_brain = CNNMsgProcessor()
     data_window = DataCollectionUI(nn_brain.process_message)
     data_window.show()
 
