@@ -1,0 +1,295 @@
+"""
+Evaluate a GA run to find lap completion time.
+Simulates the run to get positions, then checks for finish line crossing.
+"""
+
+import sys
+from pathlib import Path
+import pickle
+import lzma
+
+# Add parent directory to path
+sys.path.insert(0, str(Path(__file__).parent.parent))
+
+from rallyrobopilot_novisual import CollisionSystem
+from genetics_algo.individual import from_game_format
+from genetics_algo.simulator import simulate_individual
+
+
+class ControlSnapshot:
+    """Simple snapshot with controls for replay (needed for unpickling)."""
+    def __init__(self, forward, backward, left, right):
+        self.current_controls = (forward, backward, left, right)
+
+
+def check_finish_line_crossing(pos1, pos2):
+    """
+    Check if trajectory crosses finish line at x=0, z between -25 and 25.
+
+    Args:
+        pos1 (tuple): (x, y, z) position at frame i
+        pos2 (tuple): (x, y, z) position at frame i+1
+
+    Returns:
+        bool: True if line was crossed
+    """
+    x1, y1, z1 = pos1
+    x2, y2, z2 = pos2
+
+    # Check if trajectory crosses x=0 plane
+    if (x1 <= 0 <= x2) or (x2 <= 0 <= x1):
+        # Calculate where the crossing happens in z
+        if abs(x2 - x1) > 1e-6:
+            t = (0 - x1) / (x2 - x1)
+            z_crossing = z1 + t * (z2 - z1)
+
+            # Check if crossing is within finish line bounds (-25 to 25)
+            if -25 <= z_crossing <= 25:
+                return True
+
+    return False
+
+
+def evaluate_run_from_file(run_path, collision_system, min_frame=50, verbose=True):
+    """
+    Evaluate a run by simulating it and checking for finish line crossing.
+
+    Args:
+        run_path (Path): Path to run npz file
+        collision_system (CollisionSystem): Collision system
+        min_frame (int): Minimum frame before finish can be crossed
+        verbose (bool): Print progress
+
+    Returns:
+        dict: {
+            'frames_to_finish': int or None,
+            'collision_frame': int or None,
+            'total_frames': int,
+            'finished': bool
+        }
+    """
+    # Load run data (just controls, no positions)
+    with lzma.open(run_path, "rb") as file:
+        snapshots = pickle.load(file)
+
+    if verbose:
+        print(f"Loaded run: {run_path.name}")
+        print(f"Genome length: {len(snapshots)} frames")
+        print(f"Simulating...", end=" ", flush=True)
+
+    # Convert to genome format
+    genome = []
+    for snapshot in snapshots:
+        forward, backward, left, right = snapshot.current_controls
+        axis_fb, axis_lr = from_game_format(forward, backward, left, right)
+        genome.append((axis_fb, axis_lr))
+
+    # Simulate to get positions
+    result = simulate_individual(genome, collision_system)
+
+    if verbose:
+        print("✓")
+
+    trajectory = result['trajectory']
+
+    # Check for finish line crossing
+    frames_to_finish = None
+    for i in range(len(trajectory) - 1):
+        frame = i + 1
+
+        # Skip early frames
+        if frame < min_frame:
+            continue
+
+        pos1 = trajectory[i]['position']
+        pos2 = trajectory[i + 1]['position']
+
+        if check_finish_line_crossing(pos1, pos2):
+            frames_to_finish = frame
+            break
+
+    return {
+        'frames_to_finish': frames_to_finish,
+        'collision_frame': result['collision_frame'] if result['collision_detected'] else None,
+        'total_frames': result['frames_simulated'],
+        'finished': frames_to_finish is not None
+    }
+
+
+def evaluate_latest_run(ga_runs_dir="ga_runs", verbose=True):
+    """
+    Evaluate the latest run in ga_runs directory.
+
+    Args:
+        ga_runs_dir (str): Directory containing runs
+        verbose (bool): Print progress
+
+    Returns:
+        dict: Evaluation results
+    """
+    runs_path = Path(ga_runs_dir)
+
+    # Find all runs
+    runs = list(runs_path.glob("run_*.npz"))
+
+    if not runs:
+        print(f"✗ No runs found in {ga_runs_dir}/")
+        return None
+
+    # Get latest run
+    latest_run = max(runs, key=lambda p: p.stat().st_mtime)
+
+    if verbose:
+        print("=" * 70)
+        print("EVALUATING LATEST RUN")
+        print("=" * 70)
+        print()
+
+    # Initialize collision system (suppress output)
+    import io
+    old_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+    collision_system = CollisionSystem("SimpleTrack/track_metadata.json")
+    sys.stdout = old_stdout
+
+    # Evaluate
+    result = evaluate_run_from_file(latest_run, collision_system, min_frame=50, verbose=verbose)
+
+    # Print results
+    print()
+    print("=" * 70)
+    print("RESULTS")
+    print("=" * 70)
+
+    if result['finished']:
+        print(f"✓ Lap completed in {result['frames_to_finish']} frames")
+        print(f"  Time: {result['frames_to_finish'] * 0.1:.1f} seconds (at 10 FPS)")
+    else:
+        print(f"✗ Did not finish lap")
+        if result['collision_frame']:
+            print(f"  Collision at frame {result['collision_frame']}")
+        else:
+            print(f"  Ran for {result['total_frames']} frames without finishing")
+
+    print()
+
+    return result
+
+
+def evaluate_all_runs(ga_runs_dir="ga_runs"):
+    """
+    Evaluate all runs and rank by speed.
+
+    Args:
+        ga_runs_dir (str): Directory containing runs
+    """
+    runs_path = Path(ga_runs_dir)
+    runs = sorted(runs_path.glob("run_*.npz"))
+
+    if not runs:
+        print(f"✗ No runs found in {ga_runs_dir}/")
+        return
+
+    print("=" * 70)
+    print(f"EVALUATING ALL RUNS ({len(runs)} total)")
+    print("=" * 70)
+    print()
+
+    # Initialize collision system once (suppress output)
+    import io
+    old_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+    collision_system = CollisionSystem("SimpleTrack/track_metadata.json")
+    sys.stdout = old_stdout
+
+    results = []
+
+    for run_path in runs:
+        print(f"Evaluating {run_path.name}...", end=" ", flush=True)
+        try:
+            result = evaluate_run_from_file(run_path, collision_system, min_frame=50, verbose=False)
+            result['name'] = run_path.name
+            results.append(result)
+
+            if result['finished']:
+                print(f"✓ {result['frames_to_finish']} frames")
+            else:
+                print(f"✗ Did not finish")
+        except (EOFError, pickle.UnpicklingError) as e:
+            print(f"✗ Corrupted file (skipping)")
+
+    # Sort by completion time (finished runs first, then by frames)
+    finished = [r for r in results if r['finished']]
+    unfinished = [r for r in results if not r['finished']]
+
+    finished.sort(key=lambda r: r['frames_to_finish'])
+
+    print()
+    print("=" * 70)
+    print("RANKINGS")
+    print("=" * 70)
+    print()
+
+    if finished:
+        print("Completed laps (fastest first):")
+        for i, r in enumerate(finished, 1):
+            time_sec = r['frames_to_finish'] * 0.1
+            print(f"  {i}. {r['name']}: {r['frames_to_finish']} frames ({time_sec:.1f}s)")
+
+    if unfinished:
+        print()
+        print("Did not finish:")
+        for r in unfinished:
+            if r['collision_frame']:
+                print(f"  - {r['name']}: collision at frame {r['collision_frame']}")
+            else:
+                print(f"  - {r['name']}: ran {r['total_frames']} frames")
+
+    print()
+
+    # Return best run info
+    if finished:
+        best = finished[0]
+        print(f"🏆 Fastest run: {best['name']} - {best['frames_to_finish']} frames ({best['frames_to_finish'] * 0.1:.1f}s)")
+        print()
+
+
+def main():
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Evaluate GA runs")
+    parser.add_argument("--all", action="store_true", help="Evaluate all runs and rank them")
+    parser.add_argument("--run", type=str, help="Evaluate specific run file")
+
+    args = parser.parse_args()
+
+    if args.all:
+        evaluate_all_runs()
+    elif args.run:
+        run_path = Path(args.run)
+        if not run_path.exists():
+            print(f"✗ Run file not found: {run_path}")
+            return
+
+        # Initialize collision system (suppress output)
+        import io
+        old_stdout = sys.stdout
+        sys.stdout = io.StringIO()
+        collision_system = CollisionSystem("SimpleTrack/track_metadata.json")
+        sys.stdout = old_stdout
+
+        result = evaluate_run_from_file(run_path, collision_system, verbose=True)
+
+        print()
+        if result['finished']:
+            time_sec = result['frames_to_finish'] * 0.1
+            print(f"✓ Completed in {result['frames_to_finish']} frames ({time_sec:.1f}s)")
+        else:
+            print(f"✗ Did not finish")
+        print()
+    else:
+        evaluate_latest_run()
+
+
+if __name__ == "__main__":
+    main()

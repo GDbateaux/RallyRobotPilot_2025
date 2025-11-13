@@ -6,3 +6,5 @@ from .sun import SunLight
 from .raycast_sensor import MultiRaySensor
 from .sensing_message import NetworkDataCmdInterface
 from .game_launcher import prepare_game_app
+from .game_launcher_headless import prepare_game_app_headless
+from .direct_controller import DirectController

@@ -17,13 +17,18 @@ class SensingSnapshot:
         self.car_position = (0,0,0)
         self.car_speed = 0
         self.car_angle = 0
+        self.rotation_speed = 0
         self.raycast_distances = [0]
         self.image = None
 
     def pack(self):
         byte_data = b''
         byte_data += struct.pack(">BBBB", *self.current_controls)
-        byte_data += struct.pack(">fffff", self.car_position[0], self.car_position[1], self.car_position[2], self.car_angle, self.car_speed)
+        # byte_data += struct.pack(">fffff", self.car_position[0], self.car_position[1], self.car_position[2], self.car_angle, self.car_speed)
+
+        byte_data += struct.pack(">ffffff", self.car_position[0], self.car_position[1],
+                                 self.car_position[2], self.car_angle, self.car_speed,
+                                 self.rotation_speed)
 
         nbr_raycasts = len(self.raycast_distances)
         byte_data += struct.pack(">B" + "f" * nbr_raycasts, nbr_raycasts, *self.raycast_distances)
@@ -38,10 +43,11 @@ class SensingSnapshot:
 
     def unpack(self, data):
         self.current_controls, data = iter_unpack(">BBBB", data)
-        (x,y,z,a,s), data = iter_unpack(">fffff", data)
+        (x,y,z,a,s,rs), data = iter_unpack(">ffffff", data)
         self.car_position = (x,y,z)
         self.car_angle = a
         self.car_speed = s
+        self.rotation_speed = rs
 
         (nbr_raycasts,), data = iter_unpack(">B", data)
         self.raycast_distances, data = iter_unpack(">" + "f" * nbr_raycasts, data)

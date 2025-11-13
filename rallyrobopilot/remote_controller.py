@@ -76,7 +76,9 @@ class RemoteController(Entity):
                                          held_keys['d'] or held_keys["right arrow"])
             snapshot.car_position = self.car.world_position
             snapshot.car_speed = self.car.speed
+            print(f"Recording frame: actual car.speed = {self.car.speed}, snapshot.car_speed = {snapshot.car_speed}")
             snapshot.car_angle = self.car.rotation_y
+            snapshot.rotation_speed = self.car.rotation_speed
             snapshot.raycast_distances = self.car.multiray_sensor.collect_sensor_values()
 
             #   Collect last rendered image

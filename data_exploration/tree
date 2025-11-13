@@ -1,0 +1,51 @@
+╭─ ~/Projects/ML/ML_car/RallyRobotPilot_2025 genetics_algo +8 !10 ?13   39s Py RallyRobotPilot_2025 04:48:14 PM
+╰─❯ tree genetics_algo
+genetics_algo
+├── checkpoint.py
+├── config.py
+├── fitness.py
+├── game_interface.py
+├── individual.py
+├── __init__.py
+├── lap_data.py
+├── population.py
+├── __pycache__
+│   ├── checkpoint.cpython-313.pyc
+│   ├── config.cpython-313.pyc
+│   ├── fitness.cpython-313.pyc
+│   ├── individual.cpython-313.pyc
+│   ├── __init__.cpython-313.pyc
+│   └── lap_data.cpython-313.pyc
+├── README.md
+├── simulator.py
+├── train_segment.py
+└── utils.py
+
+2 directories, 18 files
+
+╭─ ~/Projects/ML/ML_car/RallyRobotPilot_2025 genetics_algo +8 !10 ?13       Py RallyRobotPilot_2025 08:13:25 PM
+╰─❯ tree rallyrobopilot
+rallyrobopilot
+├── car.py
+├── direct_controller.py
+├── game_launcher.py
+├── __init__.py
+├── particles.py
+├── __pycache__
+│   ├── car.cpython-313.pyc
+│   ├── direct_controller.cpython-313.pyc
+│   ├── game_launcher.cpython-313.pyc
+│   ├── __init__.cpython-313.pyc
+│   ├── particles.cpython-313.pyc
+│   ├── raycast_sensor.cpython-313.pyc
+│   ├── remote_commands.cpython-313.pyc
+│   ├── remote_controller.cpython-313.pyc
+│   ├── sensing_message.cpython-313.pyc
+│   ├── sun.cpython-313.pyc
+│   └── track.cpython-313.pyc
+├── raycast_sensor.py
+├── remote_commands.py
+├── remote_controller.py
+├── sensing_message.py
+├── sun.py
+└── track.py

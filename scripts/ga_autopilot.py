@@ -4,6 +4,13 @@ import pickle
 import lzma
 import time
 
+
+class ControlSnapshot:
+    """Simple snapshot with controls for replay."""
+    def __init__(self, forward, backward, left, right):
+        self.current_controls = (forward, backward, left, right)
+
+
 class ReplayController:
     def __init__(self, recording_path="record_0.npz"):
         print(f"Loading recording from: {recording_path}")
@@ -38,8 +45,6 @@ class ReplayController:
                               for i in range(1, len(self.frame_times))]) / (len(self.frame_times) - 1)
                 print(f"Frame {self.current_frame}: dt={dt:.3f}s, avg={avg_dt:.3f}s (should be 0.1s)")
 
-
-
         commands = [
             ("forward", bool(forward)),
             ("back", bool(backward)),
@@ -58,13 +63,46 @@ class ReplayController:
 
 if __name__ == "__main__":
     import sys
+    from pathlib import Path
+
     def except_hook(cls, exception, traceback):
         sys.__excepthook__(cls, exception, traceback)
     sys.excepthook = except_hook
 
+    # Find the latest evolved run or use default recorded lap
+    default_recording = "runs/simpletrack_recorded_1.npz"
+    ga_runs_dir = Path("ga_runs")
+
+    recording_path = default_recording  # Default to recorded lap
+
+    if ga_runs_dir.exists():
+        # Find all run_*.npz files
+        evolved_runs = list(ga_runs_dir.glob("run_*.npz"))
+        if evolved_runs:
+            # Extract run numbers and find the highest
+            run_numbers = []
+            for f in evolved_runs:
+                try:
+                    num = int(f.stem.split('_')[1])
+                    run_numbers.append((num, f))
+                except (IndexError, ValueError):
+                    continue
+
+            if run_numbers:
+                # Select the run with highest number
+                latest_run = max(run_numbers, key=lambda x: x[0])[1]
+                recording_path = str(latest_run)
+                print(f"Found evolved run: {recording_path}")
+            else:
+                print(f"No evolved runs found, using default: {recording_path}")
+        else:
+            print(f"No evolved runs found, using default: {recording_path}")
+    else:
+        print(f"ga_runs folder not found, using default: {recording_path}")
+
     app = QtWidgets.QApplication(sys.argv)
 
-    replay_brain = ReplayController(recording_path="record_2.npz")
+    replay_brain = ReplayController(recording_path=recording_path)
     data_window = DataCollectionUI(replay_brain.process_message)
 
     data_window.autopiloting = True

@@ -35,6 +35,16 @@ def prepare_game_app(track_name = "SimpleTrack"):
     track = Track(track_name)
     print("loading assets after track creation")
     track.load_assets(global_models, global_texs)
+
+
+    # MAKE OBSTACLES VISIBLE with a color!
+    print(f"\n=== Found {len(track.obstacles)} collision obstacles ===")
+    for i, obs in enumerate(track.obstacles):
+        obs.visible = True  # Make visible!
+        obs.color = color.red  # Color them red
+        obs.alpha = 0.3  # Semi-transparent
+        print(f"{i+1}. Position: {obs.position}, Scale: {obs.scale}")
+
     
     # Car
     car = Car()
