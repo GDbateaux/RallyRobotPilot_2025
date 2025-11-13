@@ -9,14 +9,19 @@ class DrivingCNN(nn.Module):
 
         self.features = nn.Sequential(
             nn.Conv2d(3, 24, kernel_size=5, stride=2),
+            nn.BatchNorm2d(24),
             nn.ReLU(),
             nn.Conv2d(24, 36, kernel_size=5, stride=2),
+            nn.BatchNorm2d(36),
             nn.ReLU(),
             nn.Conv2d(36, 48, kernel_size=5, stride=2),
+            nn.BatchNorm2d(48),
             nn.ReLU(),
             nn.Conv2d(48, 64, kernel_size=3, stride=1),
+            nn.BatchNorm2d(64),
             nn.ReLU(),
-            nn.Conv2d(64, 64, kernel_size=3, stride=1),
+            nn.Conv2d(64, 50, kernel_size=3, stride=1),
+            nn.BatchNorm2d(50),
             nn.ReLU(),
         )
 
@@ -30,11 +35,17 @@ class DrivingCNN(nn.Module):
         self.fc3 = nn.Linear(50, 10)
         self.out = nn.Linear(10, 4)
 
+        self.dropout = nn.Dropout(p=0.5)
+
     def forward(self, x):
         x = self.features(x)
         x = torch.flatten(x, 1)
+        x = self.dropout(x)
         x = F.relu(self.fc1(x))
+        x = self.dropout(x)
         x = F.relu(self.fc2(x))
+        x = self.dropout(x)
         x = F.relu(self.fc3(x))
-        x = torch.sigmoid(self.out(x))
+        x = self.dropout(x)
+        x = self.out(x)
         return x

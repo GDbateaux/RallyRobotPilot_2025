@@ -39,6 +39,7 @@ class CNNMsgProcessor:
         with torch.no_grad():
             pred = self.model(inp)
             pred = pred.squeeze(0).cpu()
+            pred = torch.sigmoid(pred)
 
         actions = ["forward", "back", "left", "right"]
         threshold = 0.5
