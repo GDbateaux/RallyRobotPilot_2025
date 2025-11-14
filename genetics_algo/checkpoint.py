@@ -1,22 +1,6 @@
-"""
-Checkpoint geometry and crossing detection logic.
-Handles all checkpoint-related calculations.
-"""
-
 import numpy as np
 
 def create_checkpoints_from_data(data, num_checkpoints, checkpoint_width):
-    """
-    Create evenly distributed checkpoints from recorded lap data.
-
-    Args:
-        data (list): List of snapshots
-        num_checkpoints (int): Number of intermediate checkpoints to create
-        checkpoint_width (float): Width of each checkpoint
-
-    Returns:
-        list: List of checkpoint dictionaries with metadata
-    """
     total_frames = len(data)
     checkpoints = []
 
@@ -42,24 +26,6 @@ def create_checkpoints_from_data(data, num_checkpoints, checkpoint_width):
 
 
 def calculate_checkpoint_line(position, angle, width):
-    """
-    Calculate checkpoint line endpoints from car position and orientation.
-    Creates a perpendicular line to the car's facing direction.
-
-    Args:
-        position (tuple): (x, y, z) car position
-        angle (float): Car angle in degrees
-        width (float): Checkpoint width
-
-    Returns:
-        dict: {
-            'center': (x, y, z),
-            'point_a': (x, y, z),
-            'point_b': (x, y, z),
-            'width': float,
-            'orientation': float
-        }
-    """
     x, y, z = position
 
     # Calculate perpendicular angle (90 degrees to car's facing direction)
@@ -87,18 +53,6 @@ def calculate_checkpoint_line(position, angle, width):
 
 
 def check_line_crossing(pos1, pos2, checkpoint_line):
-    """
-    Check if movement from pos1 to pos2 crosses the checkpoint line.
-    Uses 2D line intersection in X-Z plane (ignoring Y).
-
-    Args:
-        pos1 (tuple): Starting position (x, y, z)
-        pos2 (tuple): Ending position (x, y, z)
-        checkpoint_line (dict): Checkpoint definition
-
-    Returns:
-        bool: True if line was crossed
-    """
     # Extract 2D positions (ignore Y, work in X-Z plane)
     x1, z1 = pos1[0], pos1[2]
     x2, z2 = pos2[0], pos2[2]
@@ -118,17 +72,3 @@ def check_line_crossing(pos1, pos2, checkpoint_line):
 
     # Two segments intersect if endpoints are on opposite sides
     return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
-
-
-def get_distance_to_checkpoint(position, checkpoint_line):
-    """
-    Calculate perpendicular distance from position to checkpoint line.
-
-    Args:
-        position (tuple): (x, y, z)
-        checkpoint_line (dict): Checkpoint definition
-
-    Returns:
-        float: Distance to checkpoint
-    """
-    pass

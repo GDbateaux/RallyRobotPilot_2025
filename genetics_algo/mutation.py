@@ -1,8 +1,3 @@
-"""
-Mutation strategies for genetic algorithm.
-Implements focused mutation near crash points.
-"""
-
 import random
 import copy
 from genetics_algo.config import (
@@ -15,22 +10,7 @@ from genetics_algo.config import (
 
 
 def mutate_genome(genome, collision_frame, window_size=None, duration_min=None, duration_max=None, num_mutations=None):
-    """
-    Mutate genome in a window BEFORE the crash point.
-    Performs multiple mutations, each potentially affecting both throttle AND steering.
-    Applies mutations to consecutive frames to create sustained behaviors.
 
-    Args:
-        genome (list): List of (axis_fb, axis_lr) tuples
-        collision_frame (int): Frame where collision occurred
-        window_size (int): Frames before crash to consider (default from config)
-        duration_min (int): Min consecutive frames to mutate (default from config)
-        duration_max (int): Max consecutive frames to mutate (default from config)
-        num_mutations (int): Number of mutations to apply (default from config)
-
-    Returns:
-        list: Mutated genome (new copy)
-    """
     if window_size is None:
         window_size = MUTATION_WINDOW_SIZE
     if duration_min is None:
@@ -127,13 +107,6 @@ def mutate_genome(genome, collision_frame, window_size=None, duration_min=None, 
 
 
 def _mutate_value_throttle():
-    """
-    Generate new throttle value with biased probabilities.
-    Favors forward throttle for racing behavior.
-
-    Returns:
-        int: New throttle value (1=forward, 0=coast, -1=backward)
-    """
     rand = random.random()
     if rand < MUTATION_PROB_FORWARD:
         return 1   # Forward
@@ -144,12 +117,6 @@ def _mutate_value_throttle():
 
 
 def _mutate_value_steering():
-    """
-    Generate new steering value with equal probabilities.
-
-    Returns:
-        int: New steering value (-1=left, 0=straight, 1=right)
-    """
     rand = random.random()
     if rand < MUTATION_PROB_LEFT:
         return -1  # Left
@@ -160,20 +127,6 @@ def _mutate_value_steering():
 
 
 def mutate_genome_random(genome, duration_min=None, duration_max=None, num_mutations=None):
-    """
-    Mutate genome at random locations (for individuals that didn't crash).
-    Performs multiple mutations, each potentially affecting both throttle AND steering.
-    Applies mutations to consecutive frames to create sustained behaviors.
-
-    Args:
-        genome (list): List of (axis_fb, axis_lr) tuples
-        duration_min (int): Min consecutive frames to mutate (default from config)
-        duration_max (int): Max consecutive frames to mutate (default from config)
-        num_mutations (int): Number of mutations to apply (default from config)
-
-    Returns:
-        list: Mutated genome (new copy)
-    """
     if duration_min is None:
         duration_min = MUTATION_DURATION_MIN
     if duration_max is None:
@@ -246,23 +199,6 @@ def mutate_genome_random(genome, duration_min=None, duration_max=None, num_mutat
 
 
 def create_children(parents, mutation_window_size=None, mutation_rate_no_crash=None, mutation_duration_min=None, mutation_duration_max=None):
-    """
-    Create children from parents via mutation.
-
-    For each parent:
-    - If crashed: mutate near crash point
-    - If didn't crash: clone OR randomly mutate (based on mutation_rate_no_crash)
-
-    Args:
-        parents (list): List of parent individuals with 'genome' and 'collision_detected'
-        mutation_window_size (int): Window size for crash mutation (default from config)
-        mutation_rate_no_crash (float): Probability to mutate non-crashed individuals
-        mutation_duration_min (int): Min consecutive frames to mutate (default from config)
-        mutation_duration_max (int): Max consecutive frames to mutate (default from config)
-
-    Returns:
-        list: List of child individuals (with genome, no fitness yet)
-    """
     if mutation_window_size is None:
         mutation_window_size = MUTATION_WINDOW_SIZE
     if mutation_rate_no_crash is None:

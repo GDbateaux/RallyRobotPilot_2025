@@ -1,8 +1,3 @@
-"""
-Fitness evaluation for genetic algorithm.
-Calculates fitness based on checkpoints crossed, collision, speed, and order.
-"""
-
 import math
 from genetics_algo.checkpoint import check_line_crossing
 from genetics_algo.config import (
@@ -22,33 +17,6 @@ from genetics_algo.config import (
 
 
 def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=None):
-    """
-    Calculate fitness score for an individual based on simulation result.
-
-    Fitness components:
-    1. Checkpoint bonus: +CHECKPOINT_BONUS points per checkpoint crossed (in order)
-    2. Survival bonus: +SURVIVAL_POINTS_PER_FRAME per frame survived
-    3. Collision penalty: COLLISION_PENALTY if collision occurred
-    4. Out-of-order penalty: OUT_OF_ORDER_PENALTY if checkpoints crossed out of order
-    5. Speed penalty: -checkpoints_crossed * frames_to_last_checkpoint * SPEED_PENALTY_FACTOR
-    6. Finish line speed bonus: +(genome_size - finish_frame) * FINISH_LINE_SPEED_BONUS_FACTOR
-
-    Args:
-        simulation_result (dict): Result from simulate_individual()
-        checkpoints (list): List of checkpoint dictionaries, sorted by checkpoint_id
-        debug (bool): If True, print detailed fitness breakdown
-        genome_size (int): Size of genome (for finish line speed bonus calculation)
-
-    Returns:
-        dict: {
-            'fitness': float,
-            'checkpoints_crossed': list of checkpoint IDs in order crossed,
-            'checkpoints_crossed_count': int,
-            'crossed_in_order': bool,
-            'collision': bool,
-            'frames_to_last_checkpoint': int or None
-        }
-    """
     fitness = 0.0
 
     # For debug output
@@ -147,17 +115,10 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
         frames_to_last_checkpoint = last_checkpoint_frame
 
         # Speed penalty: fewer frames = better
-        speed_penalty = len(crossed_ids) * frames_to_last_checkpoint * SPEED_PENALTY_FACTOR
+        # FIXED: Don't multiply by checkpoints - that created perverse incentive
+        speed_penalty = frames_to_last_checkpoint * SPEED_PENALTY_FACTOR
         fitness -= speed_penalty
         fitness_components['speed_penalty'] = -speed_penalty
-
-        # Survival bonus AFTER last checkpoint (rewards progress toward next checkpoint)
-        # 1 point per frame survived after last checkpoint
-        total_frames = simulation_result['frames_simulated']
-        frames_after_last_checkpoint = total_frames - last_checkpoint_frame
-        progress_bonus = frames_after_last_checkpoint * 1.0  # 1 point per frame
-        fitness += progress_bonus
-        fitness_components['progress_bonus'] = progress_bonus
 
         # Out-of-bounds penalty: check distance from last checkpoint
         # If car is too far from last checkpoint, it likely found a way to cross walls illegally
@@ -220,7 +181,7 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
         print(f"  Out-of-order penalty:  {fitness_components['out_of_order_penalty']:+8.1f}")
         if fitness_components['out_of_bounds_penalty'] < 0:
             print(f"  Out-of-bounds penalty: {fitness_components['out_of_bounds_penalty']:+8.1f}  (distance from last checkpoint > {OUT_OF_BOUNDS_DISTANCE})")
-        print(f"  Speed penalty:         {fitness_components['speed_penalty']:+8.1f}  ({len(crossed_ids)} checkpoints × {frames_to_last_checkpoint} frames × {SPEED_PENALTY_FACTOR})")
+        print(f"  Speed penalty:         {fitness_components['speed_penalty']:+8.1f}  ({frames_to_last_checkpoint} frames × {SPEED_PENALTY_FACTOR})")
         print(f"  {'─' * 40}")
         print(f"  TOTAL FITNESS:         {fitness:+8.1f}")
         print()

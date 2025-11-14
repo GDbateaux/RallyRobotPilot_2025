@@ -1,8 +1,3 @@
-"""
-Step-by-step genetic algorithm builder.
-Building block by block for learning.
-"""
-
 import sys
 from pathlib import Path
 
@@ -31,7 +26,6 @@ import os
 
 
 class ControlSnapshot:
-    """Simple snapshot with controls for replay."""
     def __init__(self, forward, backward, left, right):
         self.current_controls = (forward, backward, left, right)
 
@@ -42,10 +36,6 @@ _checkpoints = None
 
 
 def _init_worker(checkpoints, track_path="SimpleTrack/track_metadata.json"):
-    """
-    Initialize worker process with collision system and checkpoints.
-    Called once per worker process.
-    """
     global _collision_system, _checkpoints
     # Suppress output from collision system
     import io
@@ -60,16 +50,6 @@ def _init_worker(checkpoints, track_path="SimpleTrack/track_metadata.json"):
 
 
 def _evaluate_individual_worker(genome):
-    """
-    Worker function to evaluate a single individual.
-    This runs in a separate process.
-
-    Args:
-        genome (list): Individual's genome
-
-    Returns:
-        tuple: (simulation_result, fitness_result)
-    """
     global _collision_system, _checkpoints
 
     # Simulate individual
@@ -83,20 +63,6 @@ def _evaluate_individual_worker(genome):
 
 
 def evaluate_population_parallel(population, checkpoints, collision_system, pool=None, num_workers=None, track_path="SimpleTrack/track_metadata.json"):
-    """
-    Evaluate entire population in parallel using multiprocessing.
-
-    Args:
-        population (list): List of individuals with 'genome' key
-        checkpoints (list): Track checkpoints
-        collision_system (CollisionSystem): Collision system for sequential execution
-        pool (Pool): Existing worker pool to reuse (optional, creates new if None)
-        num_workers (int): Number of parallel workers (default from config)
-        track_path (str): Path to track metadata
-
-    Returns:
-        tuple: (simulation_results, fitness_results)
-    """
     if num_workers is None:
         num_workers = NUM_WORKERS
 

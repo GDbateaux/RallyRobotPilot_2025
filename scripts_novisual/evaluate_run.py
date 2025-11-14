@@ -1,8 +1,3 @@
-"""
-Evaluate a GA run to find lap completion time.
-Simulates the run to get positions, then checks for finish line crossing.
-"""
-
 import sys
 from pathlib import Path
 import pickle
@@ -17,22 +12,11 @@ from genetics_algo.simulator import simulate_individual
 
 
 class ControlSnapshot:
-    """Simple snapshot with controls for replay (needed for unpickling)."""
     def __init__(self, forward, backward, left, right):
         self.current_controls = (forward, backward, left, right)
 
 
 def check_finish_line_crossing(pos1, pos2):
-    """
-    Check if trajectory crosses finish line at x=0, z between -25 and 25.
-
-    Args:
-        pos1 (tuple): (x, y, z) position at frame i
-        pos2 (tuple): (x, y, z) position at frame i+1
-
-    Returns:
-        bool: True if line was crossed
-    """
     x1, y1, z1 = pos1
     x2, y2, z2 = pos2
 
@@ -51,23 +35,6 @@ def check_finish_line_crossing(pos1, pos2):
 
 
 def evaluate_run_from_file(run_path, collision_system, min_frame=50, verbose=True):
-    """
-    Evaluate a run by simulating it and checking for finish line crossing.
-
-    Args:
-        run_path (Path): Path to run npz file
-        collision_system (CollisionSystem): Collision system
-        min_frame (int): Minimum frame before finish can be crossed
-        verbose (bool): Print progress
-
-    Returns:
-        dict: {
-            'frames_to_finish': int or None,
-            'collision_frame': int or None,
-            'total_frames': int,
-            'finished': bool
-        }
-    """
     # Load run data (just controls, no positions)
     with lzma.open(run_path, "rb") as file:
         snapshots = pickle.load(file)
@@ -117,16 +84,6 @@ def evaluate_run_from_file(run_path, collision_system, min_frame=50, verbose=Tru
 
 
 def evaluate_latest_run(ga_runs_dir="ga_runs", verbose=True):
-    """
-    Evaluate the latest run in ga_runs directory.
-
-    Args:
-        ga_runs_dir (str): Directory containing runs
-        verbose (bool): Print progress
-
-    Returns:
-        dict: Evaluation results
-    """
     runs_path = Path(ga_runs_dir)
 
     # Find all runs
@@ -177,12 +134,6 @@ def evaluate_latest_run(ga_runs_dir="ga_runs", verbose=True):
 
 
 def evaluate_all_runs(ga_runs_dir="ga_runs"):
-    """
-    Evaluate all runs and rank by speed.
-
-    Args:
-        ga_runs_dir (str): Directory containing runs
-    """
     runs_path = Path(ga_runs_dir)
     runs = sorted(runs_path.glob("run_*.npz"))
 

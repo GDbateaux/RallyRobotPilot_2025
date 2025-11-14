@@ -1,31 +1,8 @@
-"""
-Simulator - Run genome through physics engine and record trajectory.
-"""
-
 from rallyrobopilot_novisual import CarPhysics, TrackData, DirectController, CollisionSystem
 from genetics_algo.individual import to_game_format
 
 
 def simulate_individual(genome, collision_system, track_path="SimpleTrack/track_metadata.json"):
-    """
-    Simulate an individual's genome through the physics engine.
-    Records trajectory and detects collisions.
-
-    Args:
-        genome (list): List of (axis_fb, axis_lr) control tuples
-        collision_system (CollisionSystem): Reusable collision system instance
-        track_path (str): Path to track metadata
-
-    Returns:
-        dict: {
-            'trajectory': [list of {frame, position, speed, angle}],
-            'collision_detected': bool,
-            'collision_frame': int or None,
-            'collision_point': (x, y, z) or None,
-            'frames_simulated': int,
-            'completed': bool  # True if finished genome without collision
-        }
-    """
     # Initialize physics simulation (reuse existing collision_system)
     track = TrackData(track_path)
     start_pos = track.get_start_position()

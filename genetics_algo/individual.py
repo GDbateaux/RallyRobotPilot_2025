@@ -35,6 +35,7 @@ def to_game_format(axis_fb, axis_lr):
 def from_game_format(forward, backward, left, right):
     """
     Convert game format to compact control format.
+    Used by evaluate_run.py to load saved runs.
 
     Args:
         forward (bool): Forward pressed

@@ -1,8 +1,3 @@
-"""
-Track visualization with mesh contours and checkpoints.
-Creates a base visualization of the track that can be used to overlay car paths.
-"""
-
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
@@ -17,17 +12,6 @@ from genetics_algo.config import NUM_CHECKPOINTS
 
 
 def extract_track_contours(collision_system, y_plane=1.0, verbose=True):
-    """
-    Extract 2D contours of track geometry at a specific height by slicing the mesh.
-
-    Args:
-        collision_system: CollisionSystem with loaded track geometry
-        y_plane (float): Height at which to slice the mesh (default 1.0)
-        verbose (bool): Print progress messages (default True)
-
-    Returns:
-        list: List of contour line segments [(x1, z1, x2, z2), ...]
-    """
     from panda3d.core import GeomNode, GeomVertexReader
 
     if verbose:
@@ -36,7 +20,6 @@ def extract_track_contours(collision_system, y_plane=1.0, verbose=True):
     contour_segments = []
 
     def extract_mesh_contours(node_path, y_plane):
-        """Extract contour segments from a NodePath containing geometry."""
         segments = []
 
         for node in node_path.findAllMatches('**/+GeomNode'):
@@ -95,21 +78,6 @@ def extract_track_contours(collision_system, y_plane=1.0, verbose=True):
 
 
 def plot_track_with_checkpoints(track_contours, checkpoints, output_path="track_visualization.png", show_checkpoint_numbers=True, verbose=True):
-    """
-    Plot track with all checkpoints in order.
-    This creates a base visualization that can be used to overlay car paths.
-
-    Args:
-        track_contours (list): List of contour line segments [(x1, z1, x2, z2), ...]
-        checkpoints (list): List of checkpoint dictionaries
-        output_path (str): Where to save the plot
-        show_checkpoint_numbers (bool): Whether to show checkpoint ID labels
-        verbose (bool): Print progress messages (default True)
-
-    Returns:
-        tuple: (fig, ax) matplotlib figure and axes objects (not closed, so you can add more to the plot)
-    """
-
     fig, ax = plt.subplots(1, 1, figsize=(14, 12))
 
     # Draw track contours (walls and obstacles)
@@ -158,24 +126,6 @@ def plot_track_with_checkpoints(track_contours, checkpoints, output_path="track_
 
 
 def create_track_visualization(checkpoints, collision_system=None, track_contours=None, trajectory=None, simulation_result=None, simulation_results=None, track_path="SimpleTrack/track_metadata.json", output_path="track_visualization.png", verbose=False):
-    """
-    Complete function to create track visualization from checkpoints.
-    Optionally overlays trajectory/trajectories and collision points.
-
-    Args:
-        checkpoints (list): List of checkpoint dictionaries
-        collision_system (CollisionSystem): Optional existing collision system to reuse
-        track_contours (list): Optional pre-computed track contours to reuse (avoids re-extraction)
-        trajectory (list): Optional single trajectory data [{frame, position, speed, angle}, ...]
-        simulation_result (dict): Optional single simulation result with collision info
-        simulation_results (list): Optional list of multiple simulation results
-        track_path (str): Path to track metadata JSON file
-        output_path (str): Where to save the plot
-        verbose (bool): Print progress messages (default False for clean output)
-
-    Returns:
-        tuple: (fig, ax, collision_system, track_contours) matplotlib figure, axes, collision system, and track contours
-    """
     import io
     import sys
 

@@ -1,13 +1,3 @@
-"""
-Physics Validation Test - Compare NoVisual vs Original Recording
-
-This script:
-1. Loads controls from a .npz recording
-2. Simulates using the novisual physics engine
-3. Compares simulated positions vs original recorded positions
-4. Plots both paths to verify physics are identical
-"""
-
 import sys
 from pathlib import Path
 import pickle
@@ -22,16 +12,6 @@ from rallyrobopilot_novisual import CarPhysics, TrackData, DirectController, Sim
 
 
 def extract_track_contours(collision_system, y_plane=1.0):
-    """
-    Extract 2D contours of track geometry at a specific height by slicing the mesh.
-
-    Args:
-        collision_system: CollisionSystem with loaded track geometry
-        y_plane (float): Height at which to slice the mesh (default 1.0)
-
-    Returns:
-        list: List of contour line segments [(x1, z1, x2, z2), ...]
-    """
     from panda3d.core import GeomNode, GeomVertexReader
 
     print(f"Extracting track contours at y={y_plane}...")
@@ -40,7 +20,6 @@ def extract_track_contours(collision_system, y_plane=1.0):
 
     # Process track mesh
     def extract_mesh_contours(node_path, y_plane):
-        """Extract contour segments from a NodePath containing geometry."""
         segments = []
 
         # Traverse all children to find GeomNodes
@@ -120,15 +99,6 @@ def extract_track_contours(collision_system, y_plane=1.0):
 
 
 def load_recording(filepath):
-    """
-    Load recorded data from .npz file.
-
-    Args:
-        filepath (str): Path to .npz recording file
-
-    Returns:
-        list: List of SensingSnapshot objects
-    """
     print(f"Loading recording from: {filepath}")
     with lzma.open(filepath, "rb") as file:
         data = pickle.load(file)
@@ -138,17 +108,6 @@ def load_recording(filepath):
 
 
 def simulate_with_novisual(recording_data, track_path="SimpleTrack/track_metadata.json", override_from_frame=None):
-    """
-    Simulate using novisual physics engine with controls from recording.
-
-    Args:
-        recording_data (list): List of SensingSnapshot objects
-        track_path (str): Path to track metadata
-        override_from_frame (int): If set, override controls from this frame onwards (forward only)
-
-    Returns:
-        tuple: (simulated_positions, original_positions, collision_positions, collision_system)
-    """
     print("\nSimulating with novisual physics engine...")
 
     # Setup collision system
@@ -281,16 +240,6 @@ def simulate_with_novisual(recording_data, track_path="SimpleTrack/track_metadat
 
 
 def calculate_errors(simulated_positions, original_positions):
-    """
-    Calculate position errors between simulated and original.
-
-    Args:
-        simulated_positions (list): List of (x, y, z) tuples
-        original_positions (list): List of (x, y, z) tuples
-
-    Returns:
-        dict: Error statistics
-    """
     import math
 
     errors = []
@@ -314,16 +263,6 @@ def calculate_errors(simulated_positions, original_positions):
 
 
 def plot_comparison(simulated_positions, original_positions, collision_positions, track_contours=None, output_path="physics_comparison.png"):
-    """
-    Plot simulated vs original path comparison with track contours.
-
-    Args:
-        simulated_positions (list): List of (x, y, z) tuples
-        original_positions (list): List of (x, y, z) tuples
-        collision_positions (list): List of (x, z) tuples where collisions occurred
-        track_contours (list): List of contour line segments [(x1, z1, x2, z2), ...]
-        output_path (str): Where to save the plot
-    """
     print(f"\nGenerating comparison plot...")
 
     # Extract X and Z coordinates

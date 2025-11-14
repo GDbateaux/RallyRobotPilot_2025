@@ -6,7 +6,6 @@ import time
 
 
 class ControlSnapshot:
-    """Simple snapshot with controls for replay."""
     def __init__(self, forward, backward, left, right):
         self.current_controls = (forward, backward, left, right)
 

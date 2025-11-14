@@ -3,7 +3,13 @@ Pure physics car simulation - EXACT copy of car.py physics.
 No visual components, but includes collision detection.
 """
 import math
+import sys
+from pathlib import Path
 from panda3d.core import Vec3
+
+# Import collision parameters from config
+sys.path.insert(0, str(Path(__file__).parent.parent))
+from genetics_algo.config import COLLISION_SAFETY_BUFFER, PHYSICS_SUBSTEPS
 
 
 class CarPhysics:
@@ -87,8 +93,8 @@ class CarPhysics:
 
     def update(self, forward=False, backward=False, left=False, right=False, debug_frame=None):
         """
-        Update car physics for one timestep.
-        EXACT COPY of car.py:284-413 physics logic.
+        Update car physics for one timestep with sub-stepping for collision detection.
+        Based on car.py:284-413 physics logic, but split into substeps.
 
         Args:
             forward (bool): Accelerate forward
@@ -97,67 +103,78 @@ class CarPhysics:
             right (bool): Steer right
             debug_frame (int): If provided, print debug info for this frame
         """
-        dt = self.dt  # Always 0.1 (line 286 in car.py)
+        # Physics sub-stepping: run multiple smaller updates per frame
+        # This prevents high-speed tunneling through thin walls
+        substeps = PHYSICS_SUBSTEPS
+        substep_dt = self.dt / substeps  # Divide timestep by number of substeps
 
-        # === Speed Update (car.py:310-320) ===
-        if forward:
-            self.speed += self.acceleration * dt
-        else:
-            # Natural deceleration
-            if self.speed > 1:
-                self.speed -= self.friction * 5 * dt
-            elif self.speed < -1:
-                self.speed += self.friction * 5 * dt
+        for substep in range(substeps):
+            # Use substep_dt instead of dt for all calculations
+            dt = substep_dt
 
-        # === Braking (car.py:322-330) ===
-        if backward:
-            if self.speed > 0:
-                self.speed -= self.braking_strenth * dt
+            # === Speed Update (car.py:310-320) ===
+            if forward:
+                self.speed += self.acceleration * dt
             else:
-                self.speed -= self.acceleration * dt
+                # Natural deceleration
+                if self.speed > 1:
+                    self.speed -= self.friction * 5 * dt
+                elif self.speed < -1:
+                    self.speed += self.friction * 5 * dt
 
-        # === Speed Clamping (car.py:332-336) ===
-        if self.speed > self.topspeed:
-            self.speed = self.topspeed
-        elif self.speed < self.minspeed:
-            self.speed = self.minspeed
+            # === Braking (car.py:322-330) ===
+            if backward:
+                if self.speed > 0:
+                    self.speed -= self.braking_strenth * dt
+                else:
+                    self.speed -= self.acceleration * dt
 
-        # === Rotation Update - Circle-Based Turning (car.py:338-364) ===
-        if left or right:
-            turn_right = right
-            rotation_sign = (1 if turn_right else -1)
+            # === Speed Clamping (car.py:332-336) ===
+            if self.speed > self.topspeed:
+                self.speed = self.topspeed
+            elif self.speed < self.minspeed:
+                self.speed = self.minspeed
 
-            # Max angular speed
-            normalized_speed = abs(self.speed / self.topspeed)
+            # === Rotation Update - Circle-Based Turning (car.py:338-364) ===
+            if left or right:
+                turn_right = right
+                rotation_sign = (1 if turn_right else -1)
 
-            # Rotation radius function (car.py:346-349)
-            smallest_radius = 1.5
-            biggest_radius = 25
-            radius = pow(normalized_speed, 1.5) * (biggest_radius - smallest_radius) + smallest_radius
+                # Max angular speed
+                normalized_speed = abs(self.speed / self.topspeed)
 
-            # Get travelled distance (car.py:355)
-            travelled_dist = abs(self.speed * dt)
+                # Rotation radius function (car.py:346-349)
+                smallest_radius = 1.5
+                biggest_radius = 25
+                radius = pow(normalized_speed, 1.5) * (biggest_radius - smallest_radius) + smallest_radius
 
-            # Project on circle radius & compute angle variation (car.py:357)
-            travelled_circle_center_angle = travelled_dist / radius
+                # Get travelled distance (car.py:355)
+                travelled_dist = abs(self.speed * dt)
 
-            # Compute variation in Y & X (car.py:359-360)
-            dx = 1 - math.cos(travelled_circle_center_angle)
-            dy = math.sin(travelled_circle_center_angle)
+                # Project on circle radius & compute angle variation (car.py:357)
+                travelled_circle_center_angle = travelled_dist / radius
 
-            # Calculate angle delta (car.py:362)
-            da = math.atan2(dx, dy) / 3.14159 * 180
+                # Compute variation in Y & X (car.py:359-360)
+                dx = 1 - math.cos(travelled_circle_center_angle)
+                dy = math.sin(travelled_circle_center_angle)
 
-            # Apply rotation (car.py:364)
-            self.rotation_y += da * rotation_sign
+                # Calculate angle delta (car.py:362)
+                da = math.atan2(dx, dy) / 3.14159 * 180
 
-        # === Movement with Collision (car.py:366-404) ===
-        total_dist_to_move = self.speed * dt
+                # Apply rotation (car.py:364)
+                self.rotation_y += da * rotation_sign
 
-        # Move car with collision detection (car.py:373-398)
-        for i in range(2):
-            total_dist_to_move = self._move_car(total_dist_to_move, 1 if self.speed > 0 else -1, debug_frame=debug_frame)
-            if total_dist_to_move <= 0:
+            # === Movement with Collision (car.py:366-404) ===
+            total_dist_to_move = self.speed * dt
+
+            # Move car with collision detection (car.py:373-398)
+            for i in range(2):
+                total_dist_to_move = self._move_car(total_dist_to_move, 1 if self.speed > 0 else -1, debug_frame=debug_frame)
+                if total_dist_to_move <= 0:
+                    break
+
+            # If collision occurred in this substep, stop processing further substeps
+            if self.collision_occurred:
                 break
 
     def _move_car(self, distance_to_travel, direction, debug_frame=None):
@@ -201,11 +218,10 @@ class CarPhysics:
         boxcast_origin = (self.x, self.y, self.z)  # Use actual 3D position
         boxcast_direction = (forward_vec.x, forward_vec.y, forward_vec.z)  # 3D direction
 
-        # OPTION 1: Original game behavior (exact match)
-        boxcast_distance = self.scale_x + distance_to_travel  # scale_x (1.0) + distance
-
-        # OPTION 3: Use collision_radius for earlier detection (detects 1.66 units earlier)
-        # boxcast_distance = self.collision_radius + distance_to_travel  # collision_radius (2.66) + distance
+        # Use collision_radius (2.66) instead of scale_x (1.0) to account for car's actual size
+        # This catches side collisions during turns that forward-only raycast would miss
+        # Also adds safety buffer to prevent rare missed collisions (configurable in config.py)
+        boxcast_distance = self.collision_radius + distance_to_travel + COLLISION_SAFETY_BUFFER
 
         front_collision = self.collision_system.boxcast(
             origin=boxcast_origin,
@@ -215,11 +231,8 @@ class CarPhysics:
         )
 
         # COLLISION THRESHOLD
-        # OPTION 1: Original game behavior (exact match)
-        collision_threshold = self.scale_x + distance_to_travel
-
-        # OPTION 3: Use collision_radius for earlier detection (detects 1.66 units earlier)
-        # collision_threshold = self.collision_radius + distance_to_travel
+        # Use collision_radius to match boxcast distance
+        collision_threshold = self.collision_radius + distance_to_travel + COLLISION_SAFETY_BUFFER
 
         # DEBUG OUTPUT
         if debug_frame is not None:
