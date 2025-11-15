@@ -6,9 +6,10 @@ import torch.nn.functional as F
 class DrivingCNN(nn.Module):
     def __init__(self, input_shape):
         super().__init__()
+        C, H, W = input_shape
 
         self.features = nn.Sequential(
-            nn.Conv2d(3, 24, kernel_size=5, stride=2),
+            nn.Conv2d(C, 24, kernel_size=5, stride=2),
             nn.BatchNorm2d(24),
             nn.ReLU(),
             nn.Conv2d(24, 36, kernel_size=5, stride=2),

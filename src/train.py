@@ -2,6 +2,7 @@ import torch
 
 import matplotlib.pyplot as plt
 import torch.optim as optim
+from config import N_FRAMES
 import torch.nn as nn
 
 from torch.utils.data import DataLoader, random_split
@@ -12,7 +13,9 @@ from tqdm import tqdm
 
 
 data_dir = Path(__file__).parent.parent / "data/simple_track"
-full_dataset = DrivingDataset(data_dir)
+
+n_frames = N_FRAMES
+full_dataset = DrivingDataset(data_dir, n_frames=n_frames)
 
 train_ratio = 0.8
 n_total = len(full_dataset)
@@ -37,7 +40,7 @@ model = DrivingCNN((C, H, W)).to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
 
 train_losses, val_losses = [], []
-criterion = nn.BCEWithLogitsLoss(torch.tensor([0.7, 1, 1, 1], dtype=torch.float32, device=device))
+criterion = nn.BCEWithLogitsLoss()
 
 def train_one_epoch(model: DrivingCNN, loader: DataLoader, optimizer: optim, device: torch.device):
     model.train()
@@ -84,7 +87,7 @@ def eval_one_epoch(model, loader, device):
     return total_loss / total_n
 
 
-num_epochs = 100
+num_epochs = 60
 for epoch in tqdm(range(num_epochs)):
     train_loss = train_one_epoch(model, train_loader, optimizer, device)
     val_loss = eval_one_epoch(model, val_loader, device)

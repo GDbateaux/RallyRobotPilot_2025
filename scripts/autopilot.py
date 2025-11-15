@@ -1,4 +1,5 @@
 import torch
+from collections import deque
 
 from PyQt6 import QtWidgets
 
@@ -6,6 +7,7 @@ from scripts.data_collector import DataCollectionUI
 from src.model import DrivingCNN
 from pathlib import Path
 from src.utils import preprocess_image
+from src.config import N_FRAMES
 
 """
 This file is provided as an example of what a simplistic controller could be done.
@@ -20,10 +22,13 @@ Be warned that this could also cause crash on the client side if socket sending 
 
 
 class CNNMsgProcessor:
-    def __init__(self, device="cpu"):
+    def __init__(self, device="cpu", n_frames=N_FRAMES):
         self.device = torch.device(device)
+        self.n_frames = n_frames
+
+        self.frame_buffer = deque(maxlen=n_frames)
         
-        input_shape = (3, 150, 200)
+        input_shape = (3 * n_frames, 150, 200)
         self.model = DrivingCNN(input_shape).to(self.device)
     
         model_path = Path(__file__).parent.parent / "data/models/driving_cnn.pt"
@@ -34,7 +39,15 @@ class CNNMsgProcessor:
     def nn_infer(self, message):
         frame = message.image
 
-        inp = preprocess_image(frame).unsqueeze(0).to(self.device)
+        img = preprocess_image(frame)
+        while len(self.frame_buffer) < self.n_frames:
+            self.frame_buffer.append(img)
+        self.frame_buffer.append(img)
+
+        frames = list(self.frame_buffer)
+        stacked = torch.stack(frames, dim=0)
+        stacked = stacked.view(-1, *stacked.shape[2:])
+        inp = stacked.unsqueeze(0).to(self.device)
 
         with torch.no_grad():
             pred = self.model(inp)
