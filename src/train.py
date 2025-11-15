@@ -2,7 +2,7 @@ import torch
 
 import matplotlib.pyplot as plt
 import torch.optim as optim
-from config import N_FRAMES
+from config import N_FRAMES, CONTROL_DELAY
 import torch.nn as nn
 
 from torch.utils.data import DataLoader, random_split
@@ -14,8 +14,7 @@ from tqdm import tqdm
 
 data_dir = Path(__file__).parent.parent / "data/simple_track"
 
-n_frames = N_FRAMES
-full_dataset = DrivingDataset(data_dir, n_frames=n_frames)
+full_dataset = DrivingDataset(data_dir, n_frames=N_FRAMES, control_delay=CONTROL_DELAY)
 
 train_ratio = 0.8
 n_total = len(full_dataset)

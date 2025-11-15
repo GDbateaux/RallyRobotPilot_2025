@@ -9,7 +9,7 @@ from src.utils import preprocess_image
 
 
 class DrivingDataset(Dataset):
-    def __init__(self, dir_path: str, n_frames: int = 1):
+    def __init__(self, dir_path: str, n_frames: int = 1, control_delay: int = 0):
         dir_path = Path(dir_path)
         all_images = []
         all_controls = []
@@ -28,11 +28,11 @@ class DrivingDataset(Dataset):
             ctrls = np.array(ctrls, dtype=np.float32)
             L = len(imgs)
 
-            for t in range(n_frames - 1, L):
+            for t in range(n_frames - 1, L - control_delay):
                 window = imgs[t - n_frames + 1 : t + 1]
 
                 stacked = window.reshape(-1, *window.shape[2:])
-                target = ctrls[t]
+                target = ctrls[t + control_delay]
                 all_images.append(stacked)
                 all_controls.append(target)
 
