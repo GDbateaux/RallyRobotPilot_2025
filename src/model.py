@@ -31,22 +31,24 @@ class DrivingCNN(nn.Module):
             out_feat = self.features(dummy)
             n_flat = out_feat.view(1, -1).shape[1]
 
-        self.fc1 = nn.Linear(n_flat, 100)
-        self.fc2 = nn.Linear(100, 50)
-        self.fc3 = nn.Linear(50, 10)
-        self.out = nn.Linear(10, 4)
+        self.mlp = nn.Sequential(
+            nn.Linear(n_flat, 100),
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
 
-        self.dropout = nn.Dropout(p=0.5)
+            nn.Linear(100, 50),
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
+
+            nn.Linear(50, 10),
+            nn.ReLU(),
+            nn.Dropout(p=0.5),
+
+            nn.Linear(10, 4)
+        )
 
     def forward(self, x):
         x = self.features(x)
         x = torch.flatten(x, 1)
-        x = self.dropout(x)
-        x = F.relu(self.fc1(x))
-        x = self.dropout(x)
-        x = F.relu(self.fc2(x))
-        x = self.dropout(x)
-        x = F.relu(self.fc3(x))
-        x = self.dropout(x)
-        x = self.out(x)
+        x = self.mlp(x)
         return x

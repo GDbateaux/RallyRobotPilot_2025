@@ -39,7 +39,9 @@ model = DrivingCNN((C, H, W)).to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
 
 train_losses, val_losses = [], []
-criterion = nn.BCEWithLogitsLoss()
+pos_weight = torch.tensor([1.0, 4.0, 2.0, 2.0], device=device)
+criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
+
 
 def train_one_epoch(model: DrivingCNN, loader: DataLoader, optimizer: optim, device: torch.device):
     model.train()
@@ -51,7 +53,6 @@ def train_one_epoch(model: DrivingCNN, loader: DataLoader, optimizer: optim, dev
         targets = targets.to(device)
 
         preds = model(imgs)
-
         loss = criterion(preds, targets)
 
         optimizer.zero_grad()
@@ -76,7 +77,6 @@ def eval_one_epoch(model, loader, device):
         targets = targets.to(device)
 
         preds = model(imgs)
-
         loss = criterion(preds, targets)
 
         bs = imgs.size(0)
