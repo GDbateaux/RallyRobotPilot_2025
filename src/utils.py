@@ -2,9 +2,11 @@ import numpy as np
 import torch
 import cv2
 
+from src.config import IMAGE_RESIZED_DIMENSIONS
+
 
 def preprocess_image(img: np.ndarray,
-                         size=(200, 150),
+                         size=IMAGE_RESIZED_DIMENSIONS,
                          to_tensor: bool = True) -> torch.Tensor | np.ndarray:
     w, h = size
     img = cv2.resize(img, (w, h)).astype(np.float32)

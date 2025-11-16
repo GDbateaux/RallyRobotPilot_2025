@@ -1,5 +1,4 @@
 import torch
-
 import matplotlib.pyplot as plt
 import torch.optim as optim
 from config import N_FRAMES, CONTROL_DELAY
@@ -13,7 +12,6 @@ from tqdm import tqdm
 
 
 data_dir = Path(__file__).parent.parent / "data/simple_track"
-
 full_dataset = DrivingDataset(data_dir, n_frames=N_FRAMES, control_delay=CONTROL_DELAY)
 
 train_ratio = 0.8
@@ -87,6 +85,11 @@ def eval_one_epoch(model, loader, device):
 
 
 num_epochs = 60
+
+best_val_loss = float("inf")
+best_epoch = -1
+best_state = None
+
 for epoch in tqdm(range(num_epochs)):
     train_loss = train_one_epoch(model, train_loader, optimizer, device)
     val_loss = eval_one_epoch(model, val_loader, device)
@@ -95,6 +98,20 @@ for epoch in tqdm(range(num_epochs)):
     val_losses.append(val_loss)
 
     print(f"[Epoch {epoch+1:02d}] train_bce={train_loss:.6f} | val_bce={val_loss:.6f}")
+
+    if val_loss < best_val_loss:
+        best_val_loss = val_loss
+        best_epoch = epoch + 1
+        best_state = model.state_dict()
+
+
+OUTPUT_PATH = Path(__file__).parent.parent / "data/models/driving_cnn.pt"
+
+if best_state is not None:
+    torch.save(best_state, OUTPUT_PATH)
+    print(f"\n Best model saved from epoch {best_epoch} with val_loss={best_val_loss:.6f}")
+else:
+    print("No model was saved (unexpected).")
 
 epochs = range(1, num_epochs + 1)
 
@@ -108,7 +125,3 @@ plt.legend()
 plt.grid(True)
 plt.tight_layout()
 plt.show()
-
-OUTPUT_PATH = Path(__file__).parent.parent / "data/models/driving_cnn.pt"
-torch.save(model.state_dict(), OUTPUT_PATH)
-print(f"Model saved to {OUTPUT_PATH}")

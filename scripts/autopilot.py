@@ -7,7 +7,7 @@ from scripts.data_collector import DataCollectionUI
 from src.model import DrivingCNN
 from pathlib import Path
 from src.utils import preprocess_image
-from src.config import N_FRAMES
+from src.config import N_FRAMES, IMAGE_RESIZED_DIMENSIONS
 
 """
 This file is provided as an example of what a simplistic controller could be done.
@@ -28,7 +28,7 @@ class CNNMsgProcessor:
 
         self.frame_buffer = deque(maxlen=n_frames)
         
-        input_shape = (3 * n_frames, 150, 200)
+        input_shape = (3 * n_frames, IMAGE_RESIZED_DIMENSIONS[1], IMAGE_RESIZED_DIMENSIONS[0])
         self.model = DrivingCNN(input_shape).to(self.device)
     
         model_path = Path(__file__).parent.parent / "data/models/driving_cnn.pt"
