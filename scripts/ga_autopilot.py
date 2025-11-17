@@ -4,6 +4,10 @@ import pickle
 import lzma
 import time
 
+from genetics_algo.config import (
+    RECORDED_LAP_PATH
+)
+
 
 class ControlSnapshot:
     def __init__(self, forward, backward, left, right):
@@ -69,7 +73,7 @@ if __name__ == "__main__":
     sys.excepthook = except_hook
 
     # Find the latest evolved run or use default recorded lap
-    default_recording = "runs/simpletrack_recorded_1.npz"
+    default_recording = RECORDED_LAP_PATH
     ga_runs_dir = Path("ga_runs")
 
     recording_path = default_recording  # Default to recorded lap
@@ -97,7 +101,7 @@ if __name__ == "__main__":
         else:
             print(f"No evolved runs found, using default: {recording_path}")
     else:
-        print(f"ga_runs folder not found, using default: {recording_path}")
+        print(f"ga_runs_backup folder not found, using default: {recording_path}")
 
     app = QtWidgets.QApplication(sys.argv)
 

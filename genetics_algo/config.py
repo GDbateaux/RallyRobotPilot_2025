@@ -1,8 +1,12 @@
 # ============================================================================
 # TRACK CONFIGURATION
 # ============================================================================
+# Track name (corresponds to directory in assets/)
+# Options: "SimpleTrack", "NotSoSimpleTrack", "SlightlyHarder", etc.
+TRACK_NAME = "SlightlyHarder"
+
 # Path to recorded lap data
-RECORDED_LAP_PATH = "runs/simpletrack_recorded_1.npz"
+RECORDED_LAP_PATH = "runs/slightlyharder_recorded_1.npz"
 
 # Track geometry
 NUM_CHECKPOINTS = 45          # Total checkpoints in the track (for lap subdivision - DO NOT CHANGE)
@@ -53,6 +57,16 @@ ENABLE_SURVIVAL_BONUS = False # Enable/disable survival points bonus
                               # True: Rewards longer runs (can favor slow individuals)
                               # False: Focus purely on checkpoints + speed (better for racing)
 
+# Progress bonus (distance traveled AFTER last checkpoint)
+PROGRESS_BONUS_PER_DISTANCE = 1.0  # Points per unit of distance traveled after crossing last checkpoint
+                              # This rewards actual forward progress after checkpoints, not just survival time
+                              # Prevents cars from gaming the system by slowing down or circling
+                              # 0.0 = Disabled (no progress bonus)
+                              # 0.5 = Gentle (slight exploration incentive)
+                              # 1.0 = Moderate (balanced - recommended starting point)
+                              # 2.0 = Strong (heavily favors distance exploration)
+                              # Distance is 3D Euclidean from checkpoint position to final position
+
 # Finish line validation
 FINISH_LINE_MIN_FRAME = 50    # Minimum frame before finish line can be crossed
                               # Prevents immediate validation at start
@@ -60,7 +74,7 @@ FINISH_LINE_MIN_FRAME = 50    # Minimum frame before finish line can be crossed
 # ============================================================================
 # POPULATION SETTINGS
 # ============================================================================
-POPULATION_SIZE = 1000          # Number of individuals per generation
+POPULATION_SIZE = 50          # Number of individuals per generation
                               # Small (3-5): Fast, good for testing
                               # Medium (8-12): Balanced
                               # Large (15-20): Slower but more thorough
@@ -68,7 +82,7 @@ POPULATION_SIZE = 1000          # Number of individuals per generation
 # ============================================================================
 # GENERATION SETTINGS
 # ============================================================================
-NUM_GENERATIONS_INITIAL = 100   # Initial generations to try
+NUM_GENERATIONS_INITIAL = 200   # Initial generations to try
                               # Training stops early if solution found
 
 EXTRA_GENERATIONS_AFTER_FINISH = 5  # Continue for N generations after finish line crossed
@@ -87,13 +101,26 @@ TOURNAMENT_SIZE = 4           # Number of individuals in each tournament
                               # 7-10: Strong selection (favors best)
 
 # Mutation
-MUTATION_WINDOW_SIZE = 20     # Frames before crash to mutate
+MUTATION_WINDOW_SIZE = 20    # Frames before crash to mutate
                               # Mutation happens in [crash_frame - window, crash_frame]
                               # Smaller = more focused, Larger = more exploration
 
+MUTATION_DISTANCE_POWER = 0.5  # Power for distance-based mutation probability (1/distance^power)
+                              # Controls how mutations are distributed within the window
+                              # 0.0 = Uniform distribution (equal probability everywhere)
+                              # 0.3 = Very flat (lots of exploration far from collision)
+                              # 0.5 = Square root (balanced - RECOMMENDED)
+                              # 0.7 = Moderate focusing near collision
+                              # 1.0 = Linear (original, very steep - most mutations right before crash)
+                              # Higher = more focus near collision, Lower = more spread out
+                              # Example with collision at frame 150, window=20:
+                              #   power=1.0: 95% mutations in frames 145-150 (very focused)
+                              #   power=0.5: 60% mutations in frames 145-150 (balanced)
+                              #   power=0.3: 40% mutations in frames 145-150 (exploratory)
+
 MUTATION_RATE_NO_CRASH = 0.2  # Probability to mutate individuals that didn't crash
                               # 0.0 = Clone them unchanged
-                              # 0.1 = 10% chance to mutate anyway
+                              # 0.1 = 10% chance to muta<zte anyway
 
 MUTATION_DURATION_MIN = 3     # Minimum consecutive frames to mutate
                               # Prevents tiny single-frame changes
@@ -139,13 +166,22 @@ SEGMENT_TIMEOUT_BUFFER = 1   # Extra frames beyond segment length
                               # recorded optimal path (useful for trying different strategies)
 
 # Collision detection safety buffer
-COLLISION_SAFETY_BUFFER = 0.1  # Extra distance for collision detection (units)
+COLLISION_SAFETY_BUFFER = 0.0  # Extra distance for collision detection (units)
                               # Adds safety margin to prevent rare missed collisions
                               # 0.0 = exact match to real game (but may miss ~0.08% of collisions)
                               # 0.05 = 5cm buffer (minimal, catches most misses)
                               # 0.1 = 10cm buffer (recommended, very safe)
                               # 0.2 = 20cm buffer (very conservative)
                               # Higher = safer but GA learns more cautious paths
+
+# Car width for multi-ray collision detection
+CAR_WIDTH = 2.0              # Width of car for side collision detection (units)
+                              # Used to offset left/right raycasts during turns
+                              # Half-width offset on each side (1.0 left, 1.0 right)
+                              # 1.5 = Narrow (tight cornering, may clip walls in real game)
+                              # 2.0 = Standard (recommended, matches typical car width)
+                              # 2.5 = Wide (very safe, more conservative paths)
+                              # Higher = GA learns to give walls more clearance
 
 # Physics sub-stepping for collision detection
 PHYSICS_SUBSTEPS = 3          # Number of physics updates per frame
@@ -155,6 +191,23 @@ PHYSICS_SUBSTEPS = 3          # Number of physics updates per frame
                               # 3 = 3 checks per frame (catches walls > 1.67 units, 3× slower) ← RECOMMENDED
                               # 4 = 4 checks per frame (catches walls > 1.25 units, 4× slower, very safe)
                               # Higher = more accurate but slower simulation
+
+# Proximity collision detection (prevents getting too close to obstacles)
+MIN_SAFE_DISTANCE = 3.0       # Minimum safe distance from obstacles (units)
+                              # If any proximity sensor detects obstacle closer than this, treat as collision
+                              # 2.0 = Very tight (risky, may graze walls)
+                              # 3.0 = Standard (recommended, good safety margin)
+                              # 4.0 = Conservative (wide berth, safer paths)
+                              # 5.0 = Very safe (may limit optimal racing lines)
+
+NUM_PROXIMITY_RAYS = 15       # Number of proximity sensor rays to cast
+                              # Rays are spread in an arc in front of the car
+                              # 15 = Standard (good coverage, matches original game)
+
+PROXIMITY_HALF_ANGLE = 90     # Half angle for proximity sensor coverage (degrees)
+                              # Total coverage = 2 * half_angle
+                              # 90 = 180° total coverage (front hemisphere)
+                              # 60 = 120° total coverage (narrower, front-focused)
 
 # ============================================================================
 # VISUALIZATION SETTINGS

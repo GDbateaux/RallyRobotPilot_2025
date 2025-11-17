@@ -9,7 +9,8 @@ from genetics_algo.checkpoint import create_checkpoints_from_data, calculate_che
 from genetics_algo.config import (
     NUM_CHECKPOINTS, CHECKPOINT_WIDTH, POPULATION_SIZE,
     NUM_GENERATIONS_INITIAL, SAVE_ALL_PLOTS, NUM_WORKERS,
-    FINISH_LINE_CHECKPOINT_ID, EXTRA_GENERATIONS_AFTER_FINISH
+    FINISH_LINE_CHECKPOINT_ID, EXTRA_GENERATIONS_AFTER_FINISH,
+    TRACK_NAME
 )
 from genetics_algo.track_map import create_track_visualization
 from genetics_algo.ga_simple import calculate_genome_length, create_initial_population
@@ -104,9 +105,14 @@ def evaluate_population_parallel(population, checkpoints, collision_system, pool
 
 
 def main():
+    # Build track metadata path from config
+    TRACK_METADATA_PATH = f"{TRACK_NAME}/track_metadata.json"
+
     print("=" * 70)
     print("GENETIC ALGORITHM - STEP BY STEP")
     print("=" * 70)
+    print()
+    print(f"Track: {TRACK_NAME}")
     print()
 
     # Step 1: Load recorded lap
@@ -139,7 +145,7 @@ def main():
 
     # Step 3: Initialize collision system
     print("Step 3: Initializing collision system...")
-    collision_system = CollisionSystem("SimpleTrack/track_metadata.json")
+    collision_system = CollisionSystem(TRACK_METADATA_PATH)
     print("✓ Collision system ready\n")
 
     # Step 3.5: Extract track contours ONCE (will be reused for all visualizations)
@@ -170,7 +176,7 @@ def main():
     if NUM_WORKERS > 1:
         print(f"Initializing {NUM_WORKERS} parallel workers...")
         ctx = get_context('spawn')
-        worker_pool = ctx.Pool(processes=NUM_WORKERS, initializer=_init_worker, initargs=(checkpoints, "SimpleTrack/track_metadata.json"))
+        worker_pool = ctx.Pool(processes=NUM_WORKERS, initializer=_init_worker, initargs=(checkpoints, TRACK_METADATA_PATH))
         print(f"✓ Worker pool ready")
 
     # Create visualization thread pool (single background thread for non-blocking PNG saves)
@@ -194,7 +200,8 @@ def main():
                 checkpoints,
                 collision_system,
                 pool=worker_pool,
-                num_workers=NUM_WORKERS
+                num_workers=NUM_WORKERS,
+                track_path=TRACK_METADATA_PATH
             )
             print("✓")
 
@@ -231,7 +238,7 @@ def main():
                     track_contours,
                     None, None,  # trajectory, simulation_result
                     simulation_results,
-                    "SimpleTrack/track_metadata.json",
+                    TRACK_METADATA_PATH,
                     str(viz_path),
                     False  # verbose
                 )
@@ -261,7 +268,7 @@ def main():
                         track_contours,
                         None, None,  # trajectory, simulation_result
                         simulation_results,
-                        "SimpleTrack/track_metadata.json",
+                        TRACK_METADATA_PATH,
                         str(viz_path),
                         False  # verbose
                     )
@@ -299,7 +306,7 @@ def main():
     print("Step 7: Saving best individual to file...")
     best_individual = get_population_stats(population)['best_individual']
 
-    # Create ga_runs directory if it doesn't exist
+    # Create ga_runs_backup directory if it doesn't exist
     ga_runs_dir = Path("ga_runs")
     ga_runs_dir.mkdir(exist_ok=True)
 

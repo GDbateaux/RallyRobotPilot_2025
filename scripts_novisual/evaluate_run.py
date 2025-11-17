@@ -34,10 +34,55 @@ def check_finish_line_crossing(pos1, pos2):
     return False
 
 
-def evaluate_run_from_file(run_path, collision_system, min_frame=50, verbose=True):
+def filter_initial_stationary_frames(snapshots, speed_threshold=0.1):
+    """
+    Remove initial frames where the car is stationary AND has no input.
+
+    Args:
+        snapshots: List of ControlSnapshot or SensingSnapshot objects
+        speed_threshold: Speed below which car is considered stationary
+
+    Returns:
+        Filtered list of snapshots
+    """
+    if not snapshots:
+        return snapshots
+
+    # Find first frame where car is moving OR has input
+    start_idx = 0
+    for i, snapshot in enumerate(snapshots):
+        forward, backward, left, right = snapshot.current_controls
+        has_input = any([forward, backward, left, right])
+
+        # Check if snapshot has speed attribute (SensingSnapshot does, ControlSnapshot doesn't)
+        if hasattr(snapshot, 'car_speed'):
+            is_moving = snapshot.car_speed > speed_threshold
+            if is_moving or has_input:
+                start_idx = i
+                break
+        else:
+            # For ControlSnapshot (GA runs), just check input
+            if has_input:
+                start_idx = i
+                break
+
+    filtered = snapshots[start_idx:]
+    return filtered
+
+
+def evaluate_run_from_file(run_path, collision_system, min_frame=50, verbose=True, filter_stationary=False):
     # Load run data (just controls, no positions)
     with lzma.open(run_path, "rb") as file:
         snapshots = pickle.load(file)
+
+    original_length = len(snapshots)
+
+    # Filter initial stationary frames if requested
+    if filter_stationary:
+        snapshots = filter_initial_stationary_frames(snapshots)
+        frames_removed = original_length - len(snapshots)
+        if verbose and frames_removed > 0:
+            print(f"Removed {frames_removed} initial stationary frames")
 
     if verbose:
         print(f"Loaded run: {run_path.name}")
@@ -83,7 +128,7 @@ def evaluate_run_from_file(run_path, collision_system, min_frame=50, verbose=Tru
     }
 
 
-def evaluate_latest_run(ga_runs_dir="ga_runs", verbose=True):
+def evaluate_latest_run(ga_runs_dir="ga_runs_backup", verbose=True):
     runs_path = Path(ga_runs_dir)
 
     # Find all runs
@@ -133,16 +178,23 @@ def evaluate_latest_run(ga_runs_dir="ga_runs", verbose=True):
     return result
 
 
-def evaluate_all_runs(ga_runs_dir="ga_runs"):
-    runs_path = Path(ga_runs_dir)
-    runs = sorted(runs_path.glob("run_*.npz"))
+def evaluate_all_runs(ga_runs_dir="ga_runs_backup", recorded_runs_dir="runs"):
+    # Collect runs from both directories
+    ga_runs_path = Path(ga_runs_dir)
+    recorded_runs_path = Path(recorded_runs_dir)
 
-    if not runs:
-        print(f"✗ No runs found in {ga_runs_dir}/")
+    ga_runs = sorted(ga_runs_path.glob("run_*.npz")) if ga_runs_path.exists() else []
+    recorded_runs = sorted(recorded_runs_path.glob("*.npz")) if recorded_runs_path.exists() else []
+
+    if not ga_runs and not recorded_runs:
+        print(f"✗ No runs found in {ga_runs_dir}/ or {recorded_runs_dir}/")
         return
 
+    total_runs = len(ga_runs) + len(recorded_runs)
     print("=" * 70)
-    print(f"EVALUATING ALL RUNS ({len(runs)} total)")
+    print(f"EVALUATING ALL RUNS ({total_runs} total)")
+    print(f"  GA runs: {len(ga_runs)} in {ga_runs_dir}/")
+    print(f"  Recorded runs: {len(recorded_runs)} in {recorded_runs_dir}/")
     print("=" * 70)
     print()
 
@@ -155,19 +207,43 @@ def evaluate_all_runs(ga_runs_dir="ga_runs"):
 
     results = []
 
-    for run_path in runs:
-        print(f"Evaluating {run_path.name}...", end=" ", flush=True)
-        try:
-            result = evaluate_run_from_file(run_path, collision_system, min_frame=50, verbose=False)
-            result['name'] = run_path.name
-            results.append(result)
+    # Process GA runs (no filtering needed)
+    if ga_runs:
+        print(f"--- Evaluating GA runs from {ga_runs_dir}/ ---")
+        for run_path in ga_runs:
+            print(f"Evaluating {run_path.name}...", end=" ", flush=True)
+            try:
+                result = evaluate_run_from_file(run_path, collision_system, min_frame=50, verbose=False, filter_stationary=False)
+                result['name'] = run_path.name
+                result['source'] = 'GA'
+                results.append(result)
 
-            if result['finished']:
-                print(f"✓ {result['frames_to_finish']} frames")
-            else:
-                print(f"✗ Did not finish")
-        except (EOFError, pickle.UnpicklingError) as e:
-            print(f"✗ Corrupted file (skipping)")
+                if result['finished']:
+                    print(f"✓ {result['frames_to_finish']} frames")
+                else:
+                    print(f"✗ Did not finish")
+            except (EOFError, pickle.UnpicklingError) as e:
+                print(f"✗ Corrupted file (skipping)")
+        print()
+
+    # Process recorded runs (with filtering)
+    if recorded_runs:
+        print(f"--- Evaluating recorded runs from {recorded_runs_dir}/ ---")
+        for run_path in recorded_runs:
+            print(f"Evaluating {run_path.name}...", end=" ", flush=True)
+            try:
+                result = evaluate_run_from_file(run_path, collision_system, min_frame=50, verbose=False, filter_stationary=True)
+                result['name'] = run_path.name
+                result['source'] = 'Recorded'
+                results.append(result)
+
+                if result['finished']:
+                    print(f"✓ {result['frames_to_finish']} frames")
+                else:
+                    print(f"✗ Did not finish")
+            except (EOFError, pickle.UnpicklingError) as e:
+                print(f"✗ Corrupted file (skipping)")
+        print()
 
     # Sort by completion time (finished runs first, then by frames)
     finished = [r for r in results if r['finished']]
@@ -175,7 +251,6 @@ def evaluate_all_runs(ga_runs_dir="ga_runs"):
 
     finished.sort(key=lambda r: r['frames_to_finish'])
 
-    print()
     print("=" * 70)
     print("RANKINGS")
     print("=" * 70)
@@ -185,23 +260,25 @@ def evaluate_all_runs(ga_runs_dir="ga_runs"):
         print("Completed laps (fastest first):")
         for i, r in enumerate(finished, 1):
             time_sec = r['frames_to_finish'] * 0.1
-            print(f"  {i}. {r['name']}: {r['frames_to_finish']} frames ({time_sec:.1f}s)")
+            source_label = f"[{r['source']}]"
+            print(f"  {i}. {source_label:12} {r['name']}: {r['frames_to_finish']} frames ({time_sec:.1f}s)")
 
     if unfinished:
         print()
         print("Did not finish:")
         for r in unfinished:
+            source_label = f"[{r['source']}]"
             if r['collision_frame']:
-                print(f"  - {r['name']}: collision at frame {r['collision_frame']}")
+                print(f"  - {source_label:12} {r['name']}: collision at frame {r['collision_frame']}")
             else:
-                print(f"  - {r['name']}: ran {r['total_frames']} frames")
+                print(f"  - {source_label:12} {r['name']}: ran {r['total_frames']} frames")
 
     print()
 
     # Return best run info
     if finished:
         best = finished[0]
-        print(f"🏆 Fastest run: {best['name']} - {best['frames_to_finish']} frames ({best['frames_to_finish'] * 0.1:.1f}s)")
+        print(f"🏆 Fastest run: [{best['source']}] {best['name']} - {best['frames_to_finish']} frames ({best['frames_to_finish'] * 0.1:.1f}s)")
         print()
 
 

@@ -9,7 +9,10 @@ from panda3d.core import Vec3
 
 # Import collision parameters from config
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from genetics_algo.config import COLLISION_SAFETY_BUFFER, PHYSICS_SUBSTEPS
+from genetics_algo.config import (
+    COLLISION_SAFETY_BUFFER, PHYSICS_SUBSTEPS, CAR_WIDTH,
+    MIN_SAFE_DISTANCE, NUM_PROXIMITY_RAYS, PROXIMITY_HALF_ANGLE
+)
 
 
 class CarPhysics:
@@ -177,6 +180,12 @@ class CarPhysics:
             if self.collision_occurred:
                 break
 
+        # Check proximity collision AFTER all substeps complete (only if no direct collision yet)
+        if not self.collision_occurred and self.collision_system is not None:
+            if self._check_proximity_collision():
+                self.collision_occurred = True
+                self.collision_count += 1
+
     def _move_car(self, distance_to_travel, direction, debug_frame=None):
         """
         Move car with collision detection.
@@ -213,22 +222,61 @@ class CarPhysics:
             'distance_to_travel': distance_to_travel
         }
 
-        # BOXCAST PARAMETERS - EXACT MATCH to original car.py:374
-        # Uses actual car position (not fixed Y), 3D direction, and scale_x (not collision_radius)
-        boxcast_origin = (self.x, self.y, self.z)  # Use actual 3D position
-        boxcast_direction = (forward_vec.x, forward_vec.y, forward_vec.z)  # 3D direction
+        # MULTI-RAY COLLISION DETECTION
+        # Cast 3 rays (left, center, right) to detect side collisions during turns
+        # This prevents cutting corners too tight and hitting walls in the real game
 
-        # Use collision_radius (2.66) instead of scale_x (1.0) to account for car's actual size
-        # This catches side collisions during turns that forward-only raycast would miss
-        # Also adds safety buffer to prevent rare missed collisions (configurable in config.py)
+        boxcast_direction = (forward_vec.x, forward_vec.y, forward_vec.z)  # 3D direction
         boxcast_distance = self.collision_radius + distance_to_travel + COLLISION_SAFETY_BUFFER
 
-        front_collision = self.collision_system.boxcast(
-            origin=boxcast_origin,
-            direction=boxcast_direction,
-            thickness=(0.1, 0.1),
-            distance=boxcast_distance
-        )
+        # Calculate perpendicular (right) vector for offset positions
+        angle_rad = math.radians(self.rotation_y)
+        right_x = math.cos(angle_rad)  # Perpendicular to forward
+        right_z = -math.sin(angle_rad)
+
+        # Define 3 ray origins: left, center, right
+        half_width = CAR_WIDTH / 2.0
+        ray_offsets = [
+            (-half_width * right_x, 0, -half_width * right_z),  # Left side
+            (0, 0, 0),                                           # Center
+            (+half_width * right_x, 0, +half_width * right_z)   # Right side
+        ]
+
+        # Cast all 3 rays and find the closest collision
+        closest_collision = None
+        min_distance = float('inf')
+
+        for offset in ray_offsets:
+            ray_origin = (
+                self.x + offset[0],
+                self.y + offset[1],
+                self.z + offset[2]
+            )
+
+            collision = self.collision_system.boxcast(
+                origin=ray_origin,
+                direction=boxcast_direction,
+                thickness=(0.1, 0.1),
+                distance=boxcast_distance
+            )
+
+            # Track the closest collision
+            if collision.hit and collision.distance < min_distance:
+                min_distance = collision.distance
+                closest_collision = collision
+
+        # Use the closest collision (or no collision if none hit)
+        if closest_collision is None:
+            # No collisions detected - create a "no hit" result
+            from rallyrobopilot_novisual.collision import CollisionResult
+            front_collision = CollisionResult(
+                hit=False,
+                distance=boxcast_distance + 999,
+                point=None,
+                normal=None
+            )
+        else:
+            front_collision = closest_collision
 
         # COLLISION THRESHOLD
         # Use collision_radius to match boxcast distance
@@ -237,21 +285,21 @@ class CarPhysics:
         # DEBUG OUTPUT
         if debug_frame is not None:
             print(f"\n{'='*80}")
-            print(f"FRAME {debug_frame} COLLISION DEBUG")
+            print(f"FRAME {debug_frame} COLLISION DEBUG (MULTI-RAY)")
             print(f"{'='*80}")
             print(f"CAR HITBOX:")
             print(f"  Position: ({self.x:.2f}, {self.y:.2f}, {self.z:.2f})")
+            print(f"  Car Width: {CAR_WIDTH:.2f}")
             print(f"  Collision Radius: {self.collision_radius}")
             print(f"  Rotation Y: {self.rotation_y:.2f}°")
             print(f"  Speed: {self.speed:.2f} units/s")
             print(f"  Forward vector: ({forward_vec.x:.3f}, {forward_vec.y:.3f}, {forward_vec.z:.3f})")
-            print(f"\nBOXCAST INFO:")
-            print(f"  Origin: ({boxcast_origin[0]:.2f}, {boxcast_origin[1]:.2f}, {boxcast_origin[2]:.2f})")
+            print(f"\nMULTI-RAY BOXCAST:")
+            print(f"  3 rays cast: LEFT, CENTER, RIGHT")
             print(f"  Direction: ({boxcast_direction[0]:.3f}, {boxcast_direction[1]:.3f}, {boxcast_direction[2]:.3f})")
             print(f"  Cast Distance: {boxcast_distance:.2f}")
-            print(f"  Thickness: (0.1, 0.1)")
             print(f"\nCOLLISION RESULT:")
-            print(f"  Distance to obstacle: {front_collision.distance:.2f}")
+            print(f"  Closest obstacle: {front_collision.distance:.2f}")
             print(f"  Collision threshold: {collision_threshold:.2f}")
             print(f"  Will collide: {front_collision.distance < collision_threshold}")
             if front_collision.hit:
@@ -331,6 +379,59 @@ class CarPhysics:
             self.z += forward_vec.z * distance_to_travel
             self.position = [self.x, self.y, self.z]
             return 0
+
+    def _check_proximity_collision(self):
+        """
+        Check if car is too close to any obstacles using proximity sensors.
+        Casts multiple rays in an arc around the car (like the original game's MultiRaySensor).
+
+        Returns:
+            bool: True if any sensor detects obstacle closer than MIN_SAFE_DISTANCE
+        """
+        # Cast rays in an arc (from -PROXIMITY_HALF_ANGLE to +PROXIMITY_HALF_ANGLE)
+        for i in range(NUM_PROXIMITY_RAYS):
+            # Calculate angle for this ray relative to car's forward direction
+            if NUM_PROXIMITY_RAYS == 1:
+                angle_offset = 0  # Single ray points forward
+            else:
+                # Spread rays evenly across the arc
+                angle_offset = -PROXIMITY_HALF_ANGLE + (2 * PROXIMITY_HALF_ANGLE / (NUM_PROXIMITY_RAYS - 1)) * i
+
+            # Calculate ray direction in world space
+            ray_angle = self.rotation_y + angle_offset
+            ray_angle_rad = math.radians(ray_angle)
+            ray_dir_x = math.sin(ray_angle_rad)
+            ray_dir_z = math.cos(ray_angle_rad)
+
+            # Cast ray from car position
+            ray_origin = (self.x, self.y, self.z)
+            ray_direction = (ray_dir_x, 0, ray_dir_z)
+
+            # Cast with long distance to detect obstacles ahead
+            collision = self.collision_system.boxcast(
+                origin=ray_origin,
+                direction=ray_direction,
+                thickness=(0.1, 0.1),
+                distance=MIN_SAFE_DISTANCE * 2  # Cast twice the safe distance to be sure
+            )
+
+            # Check if obstacle is too close
+            if collision.hit and collision.distance < MIN_SAFE_DISTANCE:
+                # Too close to obstacle! Treat as proximity collision
+                # Store collision point for visualization
+                if hasattr(collision, 'world_point') and collision.world_point:
+                    if hasattr(collision.world_point, 'x'):
+                        self.collision_point = (collision.world_point.x,
+                                               collision.world_point.y,
+                                               collision.world_point.z)
+                    else:
+                        self.collision_point = (collision.world_point[0],
+                                               collision.world_point[1],
+                                               collision.world_point[2])
+                return True
+
+        # All sensors clear - safe distance maintained
+        return False
 
     def get_state(self):
         """Get current state as dict."""

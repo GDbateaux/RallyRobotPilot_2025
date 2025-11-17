@@ -12,7 +12,8 @@ from genetics_algo.config import (
     FINISH_LINE_MIN_FRAME,
     NUM_CHECKPOINTS,
     FINISH_LINE_CHECKPOINT_ID,
-    FINISH_LINE_SPEED_BONUS_FACTOR
+    FINISH_LINE_SPEED_BONUS_FACTOR,
+    PROGRESS_BONUS_PER_DISTANCE
 )
 
 
@@ -24,6 +25,7 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
         'checkpoint_bonus': 0.0,
         'survival_bonus': 0.0,
         'progress_bonus': 0.0,
+        'progress_distance': 0.0,
         'finish_line_speed_bonus': 0.0,
         'collision_penalty': 0.0,
         'out_of_order_penalty': 0.0,
@@ -35,14 +37,18 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
     # Sort checkpoints by ID to ensure correct order
     sorted_checkpoints = sorted(checkpoints, key=lambda cp: cp['checkpoint_id'])
 
-    # Track which checkpoints were crossed and when
-    checkpoints_crossed = []  # List of (checkpoint_id, frame)
-    checkpoint_frames = {}  # Map checkpoint_id -> frame where crossed
+    # Track ALL checkpoint crossings (not just first)
+    # This handles self-crossing tracks where checkpoints may be crossed multiple times
+    checkpoint_crossings = {}  # Map checkpoint_id -> [frame1, frame2, ...] of ALL crossings
 
     # Check each checkpoint for crossing
     for checkpoint in sorted_checkpoints:
         checkpoint_id = checkpoint['checkpoint_id']
         is_finish_line = (checkpoint_id == FINISH_LINE_CHECKPOINT_ID)
+
+        # Initialize list for this checkpoint
+        if checkpoint_id not in checkpoint_crossings:
+            checkpoint_crossings[checkpoint_id] = []
 
         # Check trajectory for crossing this checkpoint
         for i in range(len(trajectory) - 1):
@@ -52,43 +58,59 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
 
             # Special handling for finish line
             if is_finish_line:
-                # Skip finish line if we haven't crossed all other checkpoints yet
-                # Valid checkpoints are [1, 2, ..., FINISH_LINE_CHECKPOINT_ID - 1]
-                all_others_crossed = all(
-                    cp_id in checkpoint_frames
-                    for cp_id in range(1, FINISH_LINE_CHECKPOINT_ID)
-                )
-                if not all_others_crossed:
-                    continue  # Skip this frame, check next
-
                 # Skip finish line if we're still within the minimum frame window
                 if frame < FINISH_LINE_MIN_FRAME:
                     continue  # Skip this frame, check next
 
             if check_line_crossing(pos1, pos2, checkpoint):
-                # Checkpoint crossed!
-                if checkpoint_id not in checkpoint_frames:  # Only count first crossing
-                    checkpoints_crossed.append((checkpoint_id, frame))
-                    checkpoint_frames[checkpoint_id] = frame
-                break
+                # Checkpoint crossed! Store ALL crossings (not just first)
+                checkpoint_crossings[checkpoint_id].append(frame)
+                # Don't break - keep checking for more crossings of same checkpoint
 
-    # Extract just the checkpoint IDs in order crossed
-    crossed_ids = [cp_id for cp_id, frame in checkpoints_crossed]
+    # Build valid checkpoint sequence for self-crossing tracks
+    # For each checkpoint [1, 2, 3, ...], find the crossing that occurred AFTER the previous checkpoint
+    # This handles tracks where checkpoint 7 might be crossed early (invalid) then later (valid)
 
-    # Only count checkpoints that form a perfect sequence [1, 2, 3, ...] with no gaps
-    # Stop at the first gap or out-of-order checkpoint
     valid_checkpoints = []
     valid_checkpoints_with_frames = []
-    for i, (checkpoint_id, frame) in enumerate(checkpoints_crossed):
-        expected_id = i + 1  # We expect checkpoints to be 1, 2, 3, ...
-        if checkpoint_id == expected_id:
-            valid_checkpoints.append(checkpoint_id)
-            valid_checkpoints_with_frames.append((checkpoint_id, frame))
-        else:
-            # Hit a gap or out-of-order checkpoint - stop counting
+    checkpoint_frames = {}  # Map checkpoint_id -> frame (for compatibility)
+    last_valid_frame = 0  # Frame of the last valid checkpoint
+
+    # Try to build sequence [1, 2, 3, 4, ...]
+    for expected_id in range(1, NUM_CHECKPOINTS + 1):
+        # Check if this checkpoint was crossed
+        if expected_id not in checkpoint_crossings or len(checkpoint_crossings[expected_id]) == 0:
+            # Checkpoint never crossed - sequence ends here
             break
 
-    # Replace with only the valid sequential checkpoints
+        # Find the first crossing that happened AFTER the last valid checkpoint
+        valid_crossing_frame = None
+        for crossing_frame in checkpoint_crossings[expected_id]:
+            if crossing_frame > last_valid_frame:
+                valid_crossing_frame = crossing_frame
+                break  # Use first valid crossing
+
+        if valid_crossing_frame is None:
+            # No valid crossing found (all crossings were before previous checkpoint)
+            break
+
+        # Special handling for finish line - must have all previous checkpoints
+        if expected_id == FINISH_LINE_CHECKPOINT_ID:
+            # Check if all other checkpoints were crossed
+            all_others_crossed = all(
+                cp_id in checkpoint_frames
+                for cp_id in range(1, FINISH_LINE_CHECKPOINT_ID)
+            )
+            if not all_others_crossed:
+                break  # Can't count finish line yet
+
+        # Valid checkpoint crossing!
+        valid_checkpoints.append(expected_id)
+        valid_checkpoints_with_frames.append((expected_id, valid_crossing_frame))
+        checkpoint_frames[expected_id] = valid_crossing_frame
+        last_valid_frame = valid_crossing_frame
+
+    # Set final values
     crossed_ids = valid_checkpoints
     checkpoints_crossed = valid_checkpoints_with_frames
     crossed_in_order = True  # If we got here, all counted checkpoints are in order
@@ -119,6 +141,22 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
         speed_penalty = frames_to_last_checkpoint * SPEED_PENALTY_FACTOR
         fitness -= speed_penalty
         fitness_components['speed_penalty'] = -speed_penalty
+
+        # Progress bonus: reward distance traveled AFTER last checkpoint
+        # This encourages actual forward progress, prevents gaming by slowing down/circling
+        checkpoint_position = trajectory[last_checkpoint_frame]['position']
+        final_position = trajectory[-1]['position']
+
+        # Calculate 3D Euclidean distance traveled after checkpoint
+        dx = final_position[0] - checkpoint_position[0]
+        dy = final_position[1] - checkpoint_position[1]
+        dz = final_position[2] - checkpoint_position[2]
+        distance_traveled = math.sqrt(dx*dx + dy*dy + dz*dz)
+
+        progress_bonus = distance_traveled * PROGRESS_BONUS_PER_DISTANCE
+        fitness += progress_bonus
+        fitness_components['progress_bonus'] = progress_bonus
+        fitness_components['progress_distance'] = distance_traveled  # Store for debug output
 
         # Out-of-bounds penalty: check distance from last checkpoint
         # If car is too far from last checkpoint, it likely found a way to cross walls illegally
@@ -174,7 +212,8 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
             frames_saved = int(fitness_components['finish_line_speed_bonus'] / FINISH_LINE_SPEED_BONUS_FACTOR)
             print(f"  Finish line bonus:     {fitness_components['finish_line_speed_bonus']:+8.1f}  (completed in {finish_frame} frames, saved {frames_saved} frames × {FINISH_LINE_SPEED_BONUS_FACTOR})")
         if fitness_components['progress_bonus'] > 0:
-            print(f"  Progress bonus:        {fitness_components['progress_bonus']:+8.1f}  ({int(fitness_components['progress_bonus'])} frames after last checkpoint)")
+            distance = fitness_components['progress_distance']
+            print(f"  Progress bonus:        {fitness_components['progress_bonus']:+8.1f}  ({distance:.1f} units traveled after last checkpoint × {PROGRESS_BONUS_PER_DISTANCE})")
         if ENABLE_SURVIVAL_BONUS:
             print(f"  Survival bonus:        {fitness_components['survival_bonus']:+8.1f}  ({int(fitness_components['survival_bonus'])} frames × {SURVIVAL_POINTS_PER_FRAME})")
         print(f"  Collision penalty:     {fitness_components['collision_penalty']:+8.1f}")

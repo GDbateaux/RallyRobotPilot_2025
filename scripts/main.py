@@ -3,6 +3,10 @@ from flask import Flask, request, jsonify
 from threading import Thread
 from panda3d.core import ClockObject
 
+from genetics_algo.config import (
+    TRACK_NAME
+)
+
 
 # Setup Flask
 
@@ -12,7 +16,7 @@ print("Flask server running on port 5000")
 flask_thread.start()
 
 # app, car = prepare_game_app("VisualTrack/track_circuit2_metadata.json")
-app, car = prepare_game_app("SimpleTrack/track_metadata.json")
+app, car = prepare_game_app(f"{TRACK_NAME}/track_metadata.json")
 
 
 clock = ClockObject.getGlobalClock()

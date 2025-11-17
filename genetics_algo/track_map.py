@@ -117,10 +117,8 @@ def plot_track_with_checkpoints(track_contours, checkpoints, output_path="track_
     ax.axis('equal')
 
     plt.tight_layout()
-    plt.savefig(output_path, dpi=150, bbox_inches='tight')
-
-    if verbose:
-        print(f"✓ Track visualization saved to: {output_path}")
+    # Don't save or close here - let the caller handle that
+    # so they can add more elements (trajectories, etc.) before saving
 
     return fig, ax
 
@@ -221,6 +219,7 @@ def create_track_visualization(checkpoints, collision_system=None, track_contour
 
     # Save the plot
     plt.savefig(output_path, dpi=150, bbox_inches='tight')
+    plt.close(fig)  # Free memory to prevent warning
 
     # Print only the final result
     if not verbose:

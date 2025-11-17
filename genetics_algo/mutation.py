@@ -1,7 +1,8 @@
 import random
 import copy
+import math
 from genetics_algo.config import (
-    MUTATION_WINDOW_SIZE, MUTATION_RATE_NO_CRASH,
+    MUTATION_WINDOW_SIZE, MUTATION_RATE_NO_CRASH, MUTATION_DISTANCE_POWER,
     MUTATION_DURATION_MIN, MUTATION_DURATION_MAX, BRAKE_MUTATION_DURATION_MAX,
     NUM_MUTATIONS_PER_EVENT,
     MUTATION_PROB_FORWARD, MUTATION_PROB_COAST, MUTATION_PROB_BACKWARD,
@@ -36,15 +37,26 @@ def mutate_genome(genome, collision_frame, window_size=None, duration_min=None, 
     actual_num_mutations = random.randint(1, num_mutations)
 
     for _ in range(actual_num_mutations):
-        # Pick random frame in the window with 1/x distribution
-        # Heavily favors frames closer to collision (more likely to contain the mistake)
+        # Pick random frame in the window with weighted distribution
+        # Weight = 1 / (distance^power), where power is configurable
+        # Lower power = more exploration further from collision
+        # Higher power = more focus near collision
         if window_start < window_end:
             # Create list of candidate frames
             candidate_frames = list(range(window_start, window_end))
 
-            # Calculate 1/x weights (higher weight = closer to collision)
-            # Frame right before collision gets weight=1.0, frames farther back get weight=1/distance
-            weights = [1.0 / (collision_frame - frame) for frame in candidate_frames]
+            # Calculate distance-based weights (higher weight = closer to collision)
+            # Using configurable power for flexibility:
+            #   power=1.0: 1/distance (original, very focused)
+            #   power=0.5: 1/sqrt(distance) (balanced, more exploration)
+            #   power=0.3: flatter distribution (lots of exploration)
+            if MUTATION_DISTANCE_POWER == 0.0:
+                # Uniform distribution
+                weights = [1.0 for frame in candidate_frames]
+            else:
+                # Distance-based with power
+                weights = [1.0 / ((collision_frame - frame) ** MUTATION_DISTANCE_POWER)
+                          for frame in candidate_frames]
 
             # Select frame using weighted random choice
             mutate_frame = random.choices(candidate_frames, weights=weights)[0]
