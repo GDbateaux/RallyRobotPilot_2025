@@ -320,24 +320,44 @@ def main():
         print("✓ All ranks ready\n")
 
     # ========================================================================
-    # INITIALIZE COLLISION SYSTEM (All ranks)
+    # INITIALIZE COLLISION SYSTEM (All ranks - SEQUENTIAL)
     # ========================================================================
     if is_master(rank):
-        print("Step 5: Initializing collision system on all ranks...")
+        print("Step 5: Initializing collision system on all ranks (sequential to avoid resource contention)...")
 
-    # Suppress output on workers
-    if not is_master(rank):
-        import io
-        old_stdout = sys.stdout
-        sys.stdout = io.StringIO()
+    # Initialize collision systems ONE RANK AT A TIME to prevent Panda3D conflicts
+    for i in range(size):
+        if rank == i:
+            # Suppress output on workers
+            if not is_master(rank):
+                import io
+                old_stdout = sys.stdout
+                sys.stdout = io.StringIO()
 
-    collision_system = CollisionSystem(TRACK_METADATA_PATH)
+            collision_system = CollisionSystem(TRACK_METADATA_PATH)
 
-    if not is_master(rank):
-        sys.stdout = old_stdout
+            if not is_master(rank):
+                sys.stdout = old_stdout
+            else:
+                # Master prints progress
+                if size > 10:
+                    # Only show progress markers for large MPI jobs
+                    if i == 0:
+                        print(f"  Rank 0 (master) initialized", end="", flush=True)
+                    elif (i + 1) % 8 == 0:
+                        print(f"..{i+1}", end="", flush=True)
+                    elif i == size - 1:
+                        print(f"..{size} ✓")
+
+        # Wait for current rank to finish before next rank starts
+        comm.Barrier()
 
     if is_master(rank):
-        print("✓ Collision system ready on all ranks\n")
+        if size <= 10:
+            print("✓ Collision system ready on all ranks\n")
+        else:
+            print()
+            print("✓ All collision systems initialized\n")
 
     # ========================================================================
     # EXTRACT TRACK CONTOURS (Master only, for visualizations)
