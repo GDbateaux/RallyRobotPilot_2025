@@ -1,15 +1,17 @@
 import torch
-import matplotlib.pyplot as plt
-import torch.optim as optim
-from config import N_FRAMES, CONTROL_DELAY
 import torch.nn as nn
+import torch.optim as optim
+import matplotlib.pyplot as plt
+import numpy as np
 
-from torch.utils.data import DataLoader, random_split
-from dataset import DrivingDataset
-from model import DrivingCNN
 from pathlib import Path
 from tqdm import tqdm
+from sklearn.metrics import confusion_matrix, ConfusionMatrixDisplay
 
+from config import N_FRAMES, CONTROL_DELAY
+from dataset import DrivingDataset
+from model import DrivingCNN
+from torch.utils.data import DataLoader, random_split
 
 data_dir = Path(__file__).parent.parent / "data/simple_track"
 full_dataset = DrivingDataset(data_dir, n_frames=N_FRAMES, control_delay=CONTROL_DELAY)
@@ -29,6 +31,7 @@ train_dataset, val_dataset = random_split(
 
 num_workers = 8
 pin_memory = (device.type == "cuda")
+
 train_loader = DataLoader(
     train_dataset,
     batch_size=64,
@@ -37,6 +40,7 @@ train_loader = DataLoader(
     pin_memory=pin_memory,
     persistent_workers=True
 )
+
 val_loader = DataLoader(
     val_dataset,
     batch_size=64,
@@ -120,14 +124,46 @@ for epoch in tqdm(range(num_epochs)):
         best_epoch = epoch + 1
         best_state = model.state_dict()
 
+models_dir = Path(__file__).parent.parent / "data/models"
+models_dir.mkdir(parents=True, exist_ok=True)
+OUTPUT_PATH = models_dir / "driving_cnn.pt"
 
-OUTPUT_PATH = Path(__file__).parent.parent / "data/models/driving_cnn.pt"
+model.load_state_dict(best_state)
+torch.save(best_state, OUTPUT_PATH)
 
-if best_state is not None:
-    torch.save(best_state, OUTPUT_PATH)
-    print(f"\n Best model saved from epoch {best_epoch} with val_loss={best_val_loss:.6f}")
-else:
-    print("No model was saved (unexpected).")
+model.eval()
+all_targets = []
+all_preds = []
+
+with torch.no_grad():
+    for imgs, targets in val_loader:
+        imgs = imgs.to(device)
+        targets = targets.to(device)
+        logits = model(imgs)
+        probs = torch.sigmoid(logits)
+        preds = (probs > 0.5).int().cpu().numpy()
+        t = targets.int().cpu().numpy()
+        all_targets.append(t)
+        all_preds.append(preds)
+
+all_targets = np.concatenate(all_targets, axis=0)
+all_preds = np.concatenate(all_preds, axis=0)
+
+action_names = ["forward", "back", "left", "right"]
+
+fig, axes = plt.subplots(2, 2, figsize=(8, 8))
+axes = axes.ravel()
+
+for i, name in enumerate(action_names):
+    cm = confusion_matrix(all_targets[:, i], all_preds[:, i], labels=[0, 1])
+    disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=[0, 1])
+    disp.plot(ax=axes[i], values_format="d", colorbar=False)
+    axes[i].set_title(name)
+
+plt.tight_layout()
+CM_PATH = models_dir / "confusion_matrix.png"
+plt.savefig(CM_PATH)
+plt.close(fig)
 
 epochs = range(1, num_epochs + 1)
 
