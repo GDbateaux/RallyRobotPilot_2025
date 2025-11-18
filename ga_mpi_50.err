@@ -1,2 +1,0 @@
-/home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/genetics_algo/track_map.py:181: UserWarning: *c* argument looks like a single numeric RGB or RGBA sequence, which should be avoided as value-mapping will have precedence in case its length matches with *x* & *y*.  Please use the *color* keyword-argument or provide a 2D array with a single row if you intend to specify the same RGB or RGBA value for all points.
-  ax.scatter([collision_point[0]], [collision_point[2]], c=color, s=10, marker='x',

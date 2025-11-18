@@ -155,38 +155,17 @@ def evaluate_population_mpi(comm, rank, size, population, checkpoints, track_pat
     # Scatter genomes to all ranks (with debug output)
     local_genomes = scatter_population(comm, rank, size, genomes, verbose=verbose)
 
-    # Debug: Each rank prints what it received
-    if verbose:
-        # Use barrier to ensure ordered printing
-        for i in range(size):
-            if rank == i:
-                if cpus_per_rank > 1:
-                    print(f"  [Rank {rank}] Received {len(local_genomes)} individuals, using {cpus_per_rank} CPU multiprocessing pool")
-                else:
-                    print(f"  [Rank {rank}] Received {len(local_genomes)} individuals, using sequential evaluation")
-            comm.Barrier()  # Wait for this rank to finish printing
+    # Quiet: No per-rank printing (too verbose with 64 ranks)
 
     # Each rank evaluates its chunk using multiprocessing
     if cpus_per_rank > 1:
         # Use multiprocessing pool
-        if verbose and rank == 0:
-            print(f"\n  [DEBUG] Starting parallel evaluation...")
-
         ctx = get_context('spawn')
         with ctx.Pool(processes=cpus_per_rank, initializer=_init_worker,
                       initargs=(checkpoints, track_path)) as pool:
             local_results = pool.map(_evaluate_individual_worker, local_genomes)
-
-        if verbose:
-            for i in range(size):
-                if rank == i:
-                    print(f"  [Rank {rank}] Completed evaluation of {len(local_genomes)} individuals")
-                comm.Barrier()
     else:
         # Sequential evaluation (fallback - use existing collision_system)
-        if verbose and rank == 0:
-            print(f"\n  [DEBUG] Starting sequential evaluation...")
-
         local_results = []
         for idx, genome in enumerate(local_genomes):
             sim_result = simulate_individual(genome, collision_system)
@@ -194,21 +173,12 @@ def evaluate_population_mpi(comm, rank, size, population, checkpoints, track_pat
             fit_result = calculate_fitness(sim_result, checkpoints, debug=False, genome_size=genome_size)
             local_results.append((sim_result, fit_result))
 
-            if verbose and rank == 0 and (idx + 1) % 10 == 0:
-                print(f"  [Rank {rank}] Evaluated {idx + 1}/{len(local_genomes)} individuals...")
-
     # Separate simulation and fitness results
     local_sim_results = [r[0] for r in local_results]
     local_fit_results = [r[1] for r in local_results]
 
-    if verbose and rank == 0:
-        print(f"\n  [DEBUG] Gathering results from all ranks...")
-
     # Gather results back to master
     all_sim_results, all_fit_results = gather_results(comm, rank, local_sim_results, local_fit_results)
-
-    if verbose and rank == 0:
-        print(f"  [DEBUG] All results gathered to master\n")
 
     return all_sim_results, all_fit_results
 
@@ -317,47 +287,36 @@ def main():
     finish_line_checkpoint_id = setup_data['finish_line_checkpoint_id']
 
     if is_master(rank):
-        print("✓ All ranks ready\n")
+        print("✓ Broadcast complete\n")
 
     # ========================================================================
-    # INITIALIZE COLLISION SYSTEM (All ranks - SEQUENTIAL)
+    # INITIALIZE COLLISION SYSTEM (All ranks - PARALLEL)
     # ========================================================================
     if is_master(rank):
-        print("Step 5: Initializing collision system on all ranks (sequential to avoid resource contention)...")
+        print("Step 5: Initializing collision system on all ranks...")
 
-    # Initialize collision systems ONE RANK AT A TIME to prevent Panda3D conflicts
-    for i in range(size):
-        if rank == i:
-            # Suppress output on workers
-            if not is_master(rank):
-                import io
-                old_stdout = sys.stdout
-                sys.stdout = io.StringIO()
+    # All ranks initialize in parallel
+    try:
+        # Suppress output on workers
+        if not is_master(rank):
+            import io
+            old_stdout = sys.stdout
+            sys.stdout = io.StringIO()
 
-            collision_system = CollisionSystem(TRACK_METADATA_PATH)
+        collision_system = CollisionSystem(TRACK_METADATA_PATH)
 
-            if not is_master(rank):
-                sys.stdout = old_stdout
-            else:
-                # Master prints progress
-                if size > 10:
-                    # Only show progress markers for large MPI jobs
-                    if i == 0:
-                        print(f"  Rank 0 (master) initialized", end="", flush=True)
-                    elif (i + 1) % 8 == 0:
-                        print(f"..{i+1}", end="", flush=True)
-                    elif i == size - 1:
-                        print(f"..{size} ✓")
+        if not is_master(rank):
+            sys.stdout = old_stdout
 
-        # Wait for current rank to finish before next rank starts
-        comm.Barrier()
+    except Exception as e:
+        print(f"✗ Rank {rank} failed to initialize CollisionSystem: {e}")
+        raise
+
+    # Wait for all ranks to complete initialization
+    comm.Barrier()
 
     if is_master(rank):
-        if size <= 10:
-            print("✓ Collision system ready on all ranks\n")
-        else:
-            print()
-            print("✓ All collision systems initialized\n")
+        print("✓ All collision systems initialized\n")
 
     # ========================================================================
     # EXTRACT TRACK CONTOURS (Master only, for visualizations)

@@ -3,10 +3,12 @@
 # ============================================================================
 # Track name (corresponds to directory in assets/)
 # Options: "SimpleTrack", "NotSoSimpleTrack", "SlightlyHarder", etc.
-TRACK_NAME = "SlightlyHarder"
+# TRACK_NAME = "SlightlyHarder"
+TRACK_NAME = "SimpleTrack"
 
 # Path to recorded lap data
-RECORDED_LAP_PATH = "runs/slightlyharder_recorded_1.npz"
+# RECORDED_LAP_PATH = "runs/slightlyharder_recorded_1.npz"
+RECORDED_LAP_PATH = "runs/simpletrack_recorded_1.npz"
 
 # Track geometry
 NUM_CHECKPOINTS = 40          # Total checkpoints in the track (for lap subdivision - DO NOT CHANGE)
@@ -86,7 +88,7 @@ FINISH_LINE_MIN_FRAME = 50    # Minimum frame before finish line can be crossed
 # ============================================================================
 # POPULATION SETTINGS
 # ============================================================================
-POPULATION_SIZE = 60          # Number of individuals per generation
+POPULATION_SIZE = 256         # Number of individuals per generation
                               # Small (3-5): Fast, good for testing
                               # Medium (8-12): Balanced
                               # Large (15-20): Slower but more thorough
@@ -94,7 +96,7 @@ POPULATION_SIZE = 60          # Number of individuals per generation
 # ============================================================================
 # GENERATION SETTINGS
 # ============================================================================
-NUM_GENERATIONS_INITIAL = 5   # Initial generations to try
+NUM_GENERATIONS_INITIAL = 100   # Initial generations to try
                               # Training stops early if solution found
 
 EXTRA_GENERATIONS_AFTER_FINISH = 5  # Continue for N generations after finish line crossed
@@ -105,12 +107,12 @@ EXTRA_GENERATIONS_AFTER_FINISH = 5  # Continue for N generations after finish li
 # EVOLUTION STRATEGY
 # ============================================================================
 # Selection
-ELITE_PERCENTAGE = 0.10       # Percentage of population to keep as elite
+ELITE_PERCENTAGE = 0.01       # Percentage of population to keep as elite
                               # These individuals go UNCHANGED to next generation
                               # 0.10 = Top 10% preserved
                               # 0.20 = Top 20% preserved
 
-ELITE_OFFSPRING_MULTIPLIER = 6  # Number of mutated children each elite produces
+ELITE_OFFSPRING_MULTIPLIER = 80  # Number of mutated children each elite produces
                               # These are GUARANTEED offspring from top performers
                               # Example: 5 elite × 4 offspring = 20 children from elite
                               # 0 = Disabled (no guaranteed offspring)
@@ -125,7 +127,7 @@ TOURNAMENT_SIZE = 8          # Number of individuals in each tournament
                               # 12-15: Very strong (highly favors best individuals)
 
 # Mutation
-MUTATION_WINDOW_SIZE = 20    # Frames before crash to mutate
+MUTATION_WINDOW_SIZE = 15    # Frames before crash to mutate
                               # Mutation happens in [crash_frame - window, crash_frame]
                               # Smaller = more focused, Larger = more exploration
 
@@ -148,12 +150,12 @@ MUTATION_DISTANCE_POWER = 0.5  # Power for distance-based mutation probability (
                               #   power=0.3: 40% mutations in frames 145-150 (exploratory)
 
 # Gaussian distribution parameters (used when MUTATION_DISTRIBUTION_TYPE = "gaussian")
-MUTATION_CENTER_OFFSET = 9    # Frames before collision to center the mutation distribution
+MUTATION_CENTER_OFFSET = 6    # Frames before collision to center the mutation distribution
                               # 8 = Mutations peak at 8 frames before collision (RECOMMENDED)
                               # This is typically when corrective actions should start
                               # Higher = earlier corrections, Lower = later corrections
 
-MUTATION_GAUSSIAN_STD = 4.0   # Standard deviation for gaussian distribution (frames)
+MUTATION_GAUSSIAN_STD = 3.5   # Standard deviation for gaussian distribution (frames)
                               # Controls spread of mutations around the center
                               # 2.0 = Very focused (68% within ±2 frames, 95% within ±4 frames)
                               # 3.0 = Balanced (68% within ±3 frames, 95% within ±6 frames)
@@ -165,7 +167,7 @@ MUTATION_RATE_NO_CRASH = 0.2  # Probability to mutate individuals that didn't cr
                               # 0.0 = Clone them unchanged
                               # 0.1 = 10% chance to muta<zte anyway
 
-MUTATION_DURATION_MIN = 3     # Minimum consecutive frames to mutate
+MUTATION_DURATION_MIN = 1     # Minimum consecutive frames to mutate
                               # Prevents tiny single-frame changes
                               # 5 = At least 5 frames affected (sustained behaviors)
 
@@ -262,7 +264,7 @@ SAVE_ALL_PLOTS = True        # Save plot for every generation (True) or only fin
 # ============================================================================
 # PERFORMANCE SETTINGS
 # ============================================================================
-NUM_WORKERS = 20            # Number of parallel workers for simulation
+NUM_WORKERS = 32            # Number of parallel workers for simulation
                               # Set to number of CPU cores available
                               # 1 = Sequential (no parallelization)
                               # 20 = Use 20 cores in parallel

@@ -108,14 +108,6 @@ def scatter_population(comm: MPI.Comm, rank: int, size: int,
         chunk_size = total // size
         remainder = total % size
 
-        if verbose:
-            print(f"\n  [DEBUG] Population distribution:")
-            print(f"  Total individuals: {total}")
-            print(f"  MPI ranks: {size}")
-            print(f"  Base chunk size: {chunk_size}")
-            print(f"  Remainder: {remainder} (first {remainder} ranks get +1 individual)")
-            print(f"  Distribution:")
-
         # Create chunks (distribute remainder evenly)
         chunks = []
         start_idx = 0
@@ -124,10 +116,6 @@ def scatter_population(comm: MPI.Comm, rank: int, size: int,
             current_chunk_size = chunk_size + (1 if i < remainder else 0)
             end_idx = start_idx + current_chunk_size
             chunks.append(genomes[start_idx:end_idx])
-
-            if verbose:
-                print(f"    Rank {i}: individuals {start_idx}-{end_idx-1} ({current_chunk_size} total)")
-
             start_idx = end_idx
     else:
         # Workers: will receive chunk

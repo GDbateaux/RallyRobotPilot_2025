@@ -1,0 +1,28 @@
+# Python cache
+__pycache__/
+*.pyc
+
+# Virtual envs
+.venv/
+.venv_local/
+
+# Temporary / output dirs
+out/
+ga_runs_backup/
+runs/
+plots/
+
+# Generated data
+*.npz
+*.prof
+*.log
+
+# System trash
+.Trash-1000/
+
+# IDE
+.idea/
+
+# Docker build junk
+docker/*.log
+

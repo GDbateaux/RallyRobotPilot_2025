@@ -13,13 +13,27 @@ sys.path.insert(0, str(Path(__file__).parent))
 
 from config import RECORDED_LAP_PATH, NUM_CHECKPOINTS, CHECKPOINT_WIDTH, SEGMENT_OVERLAP_FRAMES, SEGMENT_TIMEOUT_BUFFER
 
-# Import SensingSnapshot for saving evolved runs
+# Import SensingSnapshot for loading recorded laps (headless version)
 sys.path.insert(0, str(Path(__file__).parent.parent))
 from rallyrobopilot_novisual.sensing_message import SensingSnapshot
 
 # Global cache for loaded data
 _cached_data = None
 _cached_checkpoints = None  # ADD THIS LINE
+
+
+class _ModuleRedirector(pickle.Unpickler):
+    """
+    Custom unpickler to redirect rallyrobopilot imports to rallyrobopilot_novisual.
+
+    This allows us to load lap files that were recorded with the visual version
+    without triggering ursina initialization.
+    """
+    def find_class(self, module, name):
+        # Redirect visual module to novisual version
+        if module == 'rallyrobopilot.sensing_message':
+            module = 'rallyrobopilot_novisual.sensing_message'
+        return super().find_class(module, name)
 
 
 def load_recorded_lap(filepath=None):
@@ -41,7 +55,8 @@ def load_recorded_lap(filepath=None):
 
     try:
         with lzma.open(filepath, "rb") as file:
-            data = pickle.load(file)
+            # Use custom unpickler to redirect module imports
+            data = _ModuleRedirector(file).load()
 
         print(f"✓ Loaded {len(data)} snapshots")
         return data
