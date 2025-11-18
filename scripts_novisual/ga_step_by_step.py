@@ -5,12 +5,12 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from genetics_algo.lap_data import load_recorded_lap, cleanup_recording
-from genetics_algo.checkpoint import create_checkpoints_from_data, calculate_checkpoint_line
+from genetics_algo.checkpoint import create_checkpoints_from_data, calculate_checkpoint_line, filter_and_renumber_checkpoints
 from genetics_algo.config import (
     NUM_CHECKPOINTS, CHECKPOINT_WIDTH, POPULATION_SIZE,
     NUM_GENERATIONS_INITIAL, SAVE_ALL_PLOTS, NUM_WORKERS,
     FINISH_LINE_CHECKPOINT_ID, EXTRA_GENERATIONS_AFTER_FINISH,
-    TRACK_NAME
+    TRACK_NAME, CHECKPOINTS_TO_REMOVE
 )
 from genetics_algo.track_map import create_track_visualization
 from genetics_algo.ga_simple import calculate_genome_length, create_initial_population
@@ -141,7 +141,20 @@ def main():
         CHECKPOINT_WIDTH
     )
     checkpoints = intermediate_checkpoints + [finish_line]
-    print(f"✓ Created {len(checkpoints)} checkpoints (including finish line)\n")
+    print(f"✓ Created {len(checkpoints)} checkpoints (including finish line)")
+
+    # Step 2.5: Filter and renumber checkpoints (if configured)
+    if CHECKPOINTS_TO_REMOVE:
+        print(f"\nStep 2.5: Filtering checkpoints (removing {len(CHECKPOINTS_TO_REMOVE)} checkpoints)...")
+        checkpoints, finish_line_checkpoint_id = filter_and_renumber_checkpoints(
+            checkpoints,
+            CHECKPOINTS_TO_REMOVE
+        )
+        print()
+    else:
+        # Use the original finish line ID from config
+        finish_line_checkpoint_id = FINISH_LINE_CHECKPOINT_ID
+        print()
 
     # Step 3: Initialize collision system
     print("Step 3: Initializing collision system...")
@@ -224,7 +237,7 @@ def main():
                 print(" (no collision)")
 
             # Check if finish line was crossed (for early termination)
-            if finish_line_crossed_gen is None and FINISH_LINE_CHECKPOINT_ID in best['checkpoints_crossed']:
+            if finish_line_crossed_gen is None and finish_line_checkpoint_id in best['checkpoints_crossed']:
                 finish_line_crossed_gen = generation + 1
                 print(f"\n  🏁 FINISH LINE CROSSED! Running {EXTRA_GENERATIONS_AFTER_FINISH} more generations...")
 

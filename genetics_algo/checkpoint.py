@@ -72,3 +72,67 @@ def check_line_crossing(pos1, pos2, checkpoint_line):
 
     # Two segments intersect if endpoints are on opposite sides
     return ccw(A, C, D) != ccw(B, C, D) and ccw(A, B, C) != ccw(A, B, D)
+
+
+def filter_and_renumber_checkpoints(checkpoints, checkpoint_ids_to_remove):
+    """
+    Filter out specific checkpoints and renumber the remaining ones sequentially.
+
+    Args:
+        checkpoints: List of checkpoint dictionaries (each has 'checkpoint_id' key)
+        checkpoint_ids_to_remove: List of checkpoint IDs to remove
+
+    Returns:
+        tuple: (filtered_checkpoints, new_finish_line_id)
+            - filtered_checkpoints: List with removed checkpoints filtered out and IDs renumbered
+            - new_finish_line_id: The new checkpoint ID for the finish line
+
+    Raises:
+        ValueError: If trying to remove all checkpoints or invalid checkpoint IDs
+    """
+    if not checkpoint_ids_to_remove:
+        # No checkpoints to remove, return original list with finish line ID
+        if not checkpoints:
+            raise ValueError("No checkpoints provided")
+        max_id = max(cp['checkpoint_id'] for cp in checkpoints)
+        return checkpoints, max_id
+
+    # Validation: Check if all removal IDs are valid
+    existing_ids = {cp['checkpoint_id'] for cp in checkpoints}
+    invalid_ids = [cid for cid in checkpoint_ids_to_remove if cid not in existing_ids]
+    if invalid_ids:
+        print(f"Warning: Checkpoint IDs {invalid_ids} do not exist and will be ignored")
+
+    # Filter out checkpoints to remove
+    filtered = [cp for cp in checkpoints if cp['checkpoint_id'] not in checkpoint_ids_to_remove]
+
+    # Validation: Ensure at least one checkpoint remains
+    if not filtered:
+        raise ValueError(f"Cannot remove all checkpoints! Attempted to remove {len(checkpoint_ids_to_remove)} "
+                        f"from {len(checkpoints)} total checkpoints")
+
+    # Store original finish line checkpoint (the one with highest ID)
+    original_finish_id = max(cp['checkpoint_id'] for cp in checkpoints)
+    was_finish_removed = original_finish_id in checkpoint_ids_to_remove
+
+    if was_finish_removed:
+        print(f"Warning: Original finish line (checkpoint {original_finish_id}) was removed. "
+              f"The last remaining checkpoint will become the new finish line.")
+
+    # Renumber checkpoints sequentially starting from 1
+    # Keep the same order, just update the checkpoint_id
+    for new_id, checkpoint in enumerate(filtered, start=1):
+        old_id = checkpoint['checkpoint_id']
+        checkpoint['checkpoint_id'] = new_id
+        if old_id == original_finish_id and not was_finish_removed:
+            # Track the new ID of the original finish line
+            new_finish_line_id = new_id
+
+    # The new finish line is the last checkpoint in the filtered list
+    new_finish_line_id = len(filtered)
+
+    print(f"Checkpoint filtering: {len(checkpoints)} → {len(filtered)} checkpoints")
+    print(f"Removed checkpoint IDs: {sorted([cid for cid in checkpoint_ids_to_remove if cid in existing_ids])}")
+    print(f"New finish line checkpoint ID: {new_finish_line_id}")
+
+    return filtered, new_finish_line_id

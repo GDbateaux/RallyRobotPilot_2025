@@ -186,6 +186,11 @@ class CarPhysics:
                 self.collision_occurred = True
                 self.collision_count += 1
 
+        # Check for backwards movement (going in reverse is not allowed)
+        if not self.collision_occurred and self.speed < 0:
+            self.collision_occurred = True
+            self.collision_count += 1
+
     def _move_car(self, distance_to_travel, direction, debug_frame=None):
         """
         Move car with collision detection.

@@ -9,17 +9,29 @@ TRACK_NAME = "SlightlyHarder"
 RECORDED_LAP_PATH = "runs/slightlyharder_recorded_1.npz"
 
 # Track geometry
-NUM_CHECKPOINTS = 45          # Total checkpoints in the track (for lap subdivision - DO NOT CHANGE)
+NUM_CHECKPOINTS = 40          # Total checkpoints in the track (for lap subdivision - DO NOT CHANGE)
                               # This determines how the recorded lap is subdivided into checkpoints
 FINISH_LINE_CHECKPOINT_ID = NUM_CHECKPOINTS - 1   # Checkpoint ID for the finish line
                               # Note: Checkpoint 29 was removed (too close to start), so finish line is renumbered from 30→29
 CHECKPOINT_WIDTH = 50.0       # Width of checkpoint lines (meters)
 
+# Checkpoint removal configuration
+CHECKPOINTS_TO_REMOVE = [9, 10]    # List of checkpoint IDs to remove from the track
+                              # Example: [17, 30, 39] removes checkpoints 17, 30, and 39
+                              # Remaining checkpoints keep their physical positions but are renumbered sequentially
+                              # [] = No checkpoints removed (default)
+
 # ============================================================================
 # GENOME SETTINGS
 # ============================================================================
-GENOME_LENGTH_MULTIPLIER = 2  # Genome length = multiplier * recorded_lap_length
+GENOME_LENGTH_MULTIPLIER = 1.0  # Genome length = multiplier * recorded_lap_length
                               # Gives individuals extra time to complete the lap
+
+# Bootstrap from existing solution
+START_AT = None               # Frame number to start random generation from
+                              # None = Generate entire genome randomly (default)
+                              # 30 = Use latest ga_runs/*.npz genome for frames 0-30, then random
+                              # This allows bootstrapping from a known good partial solution
 
 # Random initialization probabilities for genome generation
 # Throttle (axis_fb) probabilities - should sum to 1.0
@@ -58,7 +70,7 @@ ENABLE_SURVIVAL_BONUS = False # Enable/disable survival points bonus
                               # False: Focus purely on checkpoints + speed (better for racing)
 
 # Progress bonus (distance traveled AFTER last checkpoint)
-PROGRESS_BONUS_PER_DISTANCE = 1.0  # Points per unit of distance traveled after crossing last checkpoint
+PROGRESS_BONUS_PER_DISTANCE = 10.0  # Points per unit of distance traveled after crossing last checkpoint
                               # This rewards actual forward progress after checkpoints, not just survival time
                               # Prevents cars from gaming the system by slowing down or circling
                               # 0.0 = Disabled (no progress bonus)
@@ -74,7 +86,7 @@ FINISH_LINE_MIN_FRAME = 50    # Minimum frame before finish line can be crossed
 # ============================================================================
 # POPULATION SETTINGS
 # ============================================================================
-POPULATION_SIZE = 50          # Number of individuals per generation
+POPULATION_SIZE = 100          # Number of individuals per generation
                               # Small (3-5): Fast, good for testing
                               # Medium (8-12): Balanced
                               # Large (15-20): Slower but more thorough
@@ -82,7 +94,7 @@ POPULATION_SIZE = 50          # Number of individuals per generation
 # ============================================================================
 # GENERATION SETTINGS
 # ============================================================================
-NUM_GENERATIONS_INITIAL = 200   # Initial generations to try
+NUM_GENERATIONS_INITIAL = 40   # Initial generations to try
                               # Training stops early if solution found
 
 EXTRA_GENERATIONS_AFTER_FINISH = 5  # Continue for N generations after finish line crossed
@@ -93,18 +105,35 @@ EXTRA_GENERATIONS_AFTER_FINISH = 5  # Continue for N generations after finish li
 # EVOLUTION STRATEGY
 # ============================================================================
 # Selection
-ELITE_PERCENTAGE = 0.20       # Percentage of population to keep as elite
-                              # 0.10 = Top 10% go directly to next generation
+ELITE_PERCENTAGE = 0.10       # Percentage of population to keep as elite
+                              # These individuals go UNCHANGED to next generation
+                              # 0.10 = Top 10% preserved
+                              # 0.20 = Top 20% preserved
 
-TOURNAMENT_SIZE = 4           # Number of individuals in each tournament
+ELITE_OFFSPRING_MULTIPLIER = 6  # Number of mutated children each elite produces
+                              # These are GUARANTEED offspring from top performers
+                              # Example: 5 elite × 4 offspring = 20 children from elite
+                              # 0 = Disabled (no guaranteed offspring)
+                              # 2-3 = Moderate exploitation
+                              # 4-5 = Strong exploitation (recommended for breakthrough detection)
+                              # 6+ = Very strong (may reduce diversity)
+
+TOURNAMENT_SIZE = 8          # Number of individuals in each tournament
+                              # Used to select parents for remaining population slots
                               # 3-5: Balanced selection pressure
                               # 7-10: Strong selection (favors best)
+                              # 12-15: Very strong (highly favors best individuals)
 
 # Mutation
 MUTATION_WINDOW_SIZE = 20    # Frames before crash to mutate
                               # Mutation happens in [crash_frame - window, crash_frame]
                               # Smaller = more focused, Larger = more exploration
 
+MUTATION_DISTRIBUTION_TYPE = "gaussian"  # Distribution type for mutations
+                              # "power" = 1/distance^power (biased toward collision point)
+                              # "gaussian" = Normal distribution centered before collision (RECOMMENDED)
+
+# Power distribution parameters (used when MUTATION_DISTRIBUTION_TYPE = "power")
 MUTATION_DISTANCE_POWER = 0.5  # Power for distance-based mutation probability (1/distance^power)
                               # Controls how mutations are distributed within the window
                               # 0.0 = Uniform distribution (equal probability everywhere)
@@ -117,6 +146,20 @@ MUTATION_DISTANCE_POWER = 0.5  # Power for distance-based mutation probability (
                               #   power=1.0: 95% mutations in frames 145-150 (very focused)
                               #   power=0.5: 60% mutations in frames 145-150 (balanced)
                               #   power=0.3: 40% mutations in frames 145-150 (exploratory)
+
+# Gaussian distribution parameters (used when MUTATION_DISTRIBUTION_TYPE = "gaussian")
+MUTATION_CENTER_OFFSET = 9    # Frames before collision to center the mutation distribution
+                              # 8 = Mutations peak at 8 frames before collision (RECOMMENDED)
+                              # This is typically when corrective actions should start
+                              # Higher = earlier corrections, Lower = later corrections
+
+MUTATION_GAUSSIAN_STD = 4.0   # Standard deviation for gaussian distribution (frames)
+                              # Controls spread of mutations around the center
+                              # 2.0 = Very focused (68% within ±2 frames, 95% within ±4 frames)
+                              # 3.0 = Balanced (68% within ±3 frames, 95% within ±6 frames)
+                              # 3.5 = Moderate spread (68% within ±3.5 frames, 95% within ±7 frames) - RECOMMENDED
+                              # 4.0 = Wide (68% within ±4 frames, 95% within ±8 frames)
+                              # 5.0 = Very wide (68% within ±5 frames, 95% within ±10 frames)
 
 MUTATION_RATE_NO_CRASH = 0.2  # Probability to mutate individuals that didn't crash
                               # 0.0 = Clone them unchanged
@@ -184,7 +227,7 @@ CAR_WIDTH = 2.0              # Width of car for side collision detection (units)
                               # Higher = GA learns to give walls more clearance
 
 # Physics sub-stepping for collision detection
-PHYSICS_SUBSTEPS = 3          # Number of physics updates per frame
+PHYSICS_SUBSTEPS = 2          # Number of physics updates per frame
                               # Prevents high-speed tunneling through thin walls
                               # 1 = No sub-stepping (can tunnel at max speed, fastest)
                               # 2 = 2 checks per frame (catches walls > 2.5 units, 2× slower)
@@ -193,18 +236,18 @@ PHYSICS_SUBSTEPS = 3          # Number of physics updates per frame
                               # Higher = more accurate but slower simulation
 
 # Proximity collision detection (prevents getting too close to obstacles)
-MIN_SAFE_DISTANCE = 3.0       # Minimum safe distance from obstacles (units)
+MIN_SAFE_DISTANCE = 2.5       # Minimum safe distance from obstacles (units)
                               # If any proximity sensor detects obstacle closer than this, treat as collision
                               # 2.0 = Very tight (risky, may graze walls)
                               # 3.0 = Standard (recommended, good safety margin)
                               # 4.0 = Conservative (wide berth, safer paths)
                               # 5.0 = Very safe (may limit optimal racing lines)
 
-NUM_PROXIMITY_RAYS = 15       # Number of proximity sensor rays to cast
+NUM_PROXIMITY_RAYS = 20       # Number of proximity sensor rays to cast
                               # Rays are spread in an arc in front of the car
                               # 15 = Standard (good coverage, matches original game)
 
-PROXIMITY_HALF_ANGLE = 90     # Half angle for proximity sensor coverage (degrees)
+PROXIMITY_HALF_ANGLE = 100     # Half angle for proximity sensor coverage (degrees)
                               # Total coverage = 2 * half_angle
                               # 90 = 180° total coverage (front hemisphere)
                               # 60 = 120° total coverage (narrower, front-focused)

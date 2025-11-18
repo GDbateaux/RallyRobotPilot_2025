@@ -1,7 +1,10 @@
 
 from genetics_algo.selection import select_elite, select_parents, sort_population_by_fitness
 from genetics_algo.mutation import create_children
-from genetics_algo.config import ELITE_PERCENTAGE, TOURNAMENT_SIZE, MUTATION_WINDOW_SIZE, MUTATION_RATE_NO_CRASH
+from genetics_algo.config import (
+    ELITE_PERCENTAGE, ELITE_OFFSPRING_MULTIPLIER, TOURNAMENT_SIZE,
+    MUTATION_WINDOW_SIZE, MUTATION_RATE_NO_CRASH
+)
 
 
 def augment_population_with_results(population, simulation_results, fitness_results):
@@ -17,12 +20,15 @@ def augment_population_with_results(population, simulation_results, fitness_resu
 
 def create_next_generation(population,
                           elite_percentage=None,
+                          elite_offspring_multiplier=None,
                           tournament_size=None,
                           mutation_window_size=None,
                           mutation_rate_no_crash=None):
 
     if elite_percentage is None:
         elite_percentage = ELITE_PERCENTAGE
+    if elite_offspring_multiplier is None:
+        elite_offspring_multiplier = ELITE_OFFSPRING_MULTIPLIER
     if tournament_size is None:
         tournament_size = TOURNAMENT_SIZE
     if mutation_window_size is None:
@@ -35,21 +41,30 @@ def create_next_generation(population,
     # Step 1: Sort population by fitness (best first)
     sorted_population = sort_population_by_fitness(population)
 
-    # Step 2: Select elite
+    # Step 2: Select elite (unchanged copies)
     elite = select_elite(sorted_population, elite_percentage)
     elite_count = len(elite)
 
-    # Step 3: Determine how many children to create
-    num_children = population_size - elite_count
+    # Step 3: Create guaranteed offspring from elite
+    elite_offspring = []
+    if elite_offspring_multiplier > 0:
+        for _ in range(elite_offspring_multiplier):
+            # Each elite individual creates one child per iteration
+            elite_children = create_children(elite, mutation_window_size, mutation_rate_no_crash)
+            elite_offspring.extend(elite_children)
 
-    # Step 4: Select parents via tournament selection
-    parents = select_parents(sorted_population, num_children, tournament_size)
+    # Step 4: Calculate remaining slots to fill via tournament
+    slots_filled = elite_count + len(elite_offspring)
+    remaining_slots = population_size - slots_filled
 
-    # Step 5: Create children via mutation
-    children = create_children(parents, mutation_window_size, mutation_rate_no_crash)
+    # Step 5: Fill remaining slots via tournament selection
+    tournament_children = []
+    if remaining_slots > 0:
+        parents = select_parents(sorted_population, remaining_slots, tournament_size)
+        tournament_children = create_children(parents, mutation_window_size, mutation_rate_no_crash)
 
-    # Step 6: Combine elite + children
-    next_generation = elite + children
+    # Step 6: Combine all three groups
+    next_generation = elite + elite_offspring + tournament_children
 
     return next_generation
 

@@ -2,7 +2,9 @@ import random
 import copy
 import math
 from genetics_algo.config import (
-    MUTATION_WINDOW_SIZE, MUTATION_RATE_NO_CRASH, MUTATION_DISTANCE_POWER,
+    MUTATION_WINDOW_SIZE, MUTATION_RATE_NO_CRASH,
+    MUTATION_DISTRIBUTION_TYPE, MUTATION_DISTANCE_POWER,
+    MUTATION_CENTER_OFFSET, MUTATION_GAUSSIAN_STD,
     MUTATION_DURATION_MIN, MUTATION_DURATION_MAX, BRAKE_MUTATION_DURATION_MAX,
     NUM_MUTATIONS_PER_EVENT,
     MUTATION_PROB_FORWARD, MUTATION_PROB_COAST, MUTATION_PROB_BACKWARD,
@@ -38,25 +40,37 @@ def mutate_genome(genome, collision_frame, window_size=None, duration_min=None, 
 
     for _ in range(actual_num_mutations):
         # Pick random frame in the window with weighted distribution
-        # Weight = 1 / (distance^power), where power is configurable
-        # Lower power = more exploration further from collision
-        # Higher power = more focus near collision
         if window_start < window_end:
             # Create list of candidate frames
             candidate_frames = list(range(window_start, window_end))
 
-            # Calculate distance-based weights (higher weight = closer to collision)
-            # Using configurable power for flexibility:
-            #   power=1.0: 1/distance (original, very focused)
-            #   power=0.5: 1/sqrt(distance) (balanced, more exploration)
-            #   power=0.3: flatter distribution (lots of exploration)
-            if MUTATION_DISTANCE_POWER == 0.0:
-                # Uniform distribution
-                weights = [1.0 for frame in candidate_frames]
-            else:
-                # Distance-based with power
-                weights = [1.0 / ((collision_frame - frame) ** MUTATION_DISTANCE_POWER)
+            # Calculate weights based on selected distribution type
+            if MUTATION_DISTRIBUTION_TYPE == "gaussian":
+                # Gaussian (normal) distribution centered at collision_frame - MUTATION_CENTER_OFFSET
+                # This concentrates mutations at the optimal correction point (typically 8 frames before collision)
+                center = collision_frame - MUTATION_CENTER_OFFSET
+                std = MUTATION_GAUSSIAN_STD
+
+                # Gaussian formula: weight = exp(-0.5 * ((x - center) / std)^2)
+                # Higher weight = closer to center
+                weights = [math.exp(-0.5 * ((frame - center) / std) ** 2)
                           for frame in candidate_frames]
+
+            elif MUTATION_DISTRIBUTION_TYPE == "power":
+                # Power distribution: 1 / (distance^power)
+                # Higher weight = closer to collision
+                # Lower power = more exploration further from collision
+                # Higher power = more focus near collision
+                if MUTATION_DISTANCE_POWER == 0.0:
+                    # Uniform distribution
+                    weights = [1.0 for frame in candidate_frames]
+                else:
+                    # Distance-based with power
+                    weights = [1.0 / ((collision_frame - frame) ** MUTATION_DISTANCE_POWER)
+                              for frame in candidate_frames]
+            else:
+                # Fallback to uniform if unknown type
+                weights = [1.0 for frame in candidate_frames]
 
             # Select frame using weighted random choice
             mutate_frame = random.choices(candidate_frames, weights=weights)[0]

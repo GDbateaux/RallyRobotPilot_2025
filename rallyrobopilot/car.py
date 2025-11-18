@@ -294,7 +294,7 @@ class Car(Entity):
         if self.frame_counter % 10 == 0:
             elapsed = time.time() - self.fps_timer
             actual_fps = 10 / elapsed
-            print(f"Game FPS: {actual_fps:.2f} (should be 10)")
+            # print(f"Game FPS: {actual_fps:.2f} (should be 10)")  # Commented for cleaner output
             self.fps_timer = time.time()
 
 
@@ -374,6 +374,32 @@ class Car(Entity):
 
             #   Detect collision
             if front_collision.distance < self.scale_x + distance_to_travel:
+                # DEBUG: Log collision to file
+                if not hasattr(self, '_collision_logged'):
+                    self._collision_logged = True
+                    with open('collision_debug.log', 'w') as f:
+                        f.write("="*80 + "\n")
+                        f.write("🚨 COLLISION DETECTED IN VISUAL GAME ENGINE\n")
+                        f.write("="*80 + "\n")
+                        f.write(f"Position: ({self.x:.2f}, {self.y:.2f}, {self.z:.2f})\n")
+                        f.write(f"Speed: {self.speed:.2f} units/s\n")
+                        f.write(f"Rotation Y: {self.rotation_y:.2f}°\n")
+                        f.write(f"Forward: ({self.forward.x:.3f}, {self.forward.y:.3f}, {self.forward.z:.3f})\n")
+                        f.write(f"\nCollision Details:\n")
+                        f.write(f"  Distance: {front_collision.distance:.2f}\n")
+                        f.write(f"  Entity: {front_collision.entity}\n")
+                        if hasattr(front_collision, 'world_point'):
+                            f.write(f"  Hit point: ({front_collision.world_point.x:.2f}, {front_collision.world_point.y:.2f}, {front_collision.world_point.z:.2f})\n")
+                        if hasattr(front_collision, 'world_normal'):
+                            f.write(f"  Hit normal: ({front_collision.world_normal.x:.3f}, {front_collision.world_normal.y:.3f}, {front_collision.world_normal.z:.3f})\n")
+                        if hasattr(self, 'multiray_sensor'):
+                            sensor_values = self.multiray_sensor.collect_sensor_values()
+                            f.write(f"\nProximity Sensors (15 rays):\n")
+                            f.write(f"  Min distance: {min(sensor_values):.2f}\n")
+                            f.write(f"  All sensors: {sensor_values}\n")
+                        f.write("="*80 + "\n")
+                    print("\n🚨 COLLISION! Check collision_debug.log for details\n")
+
                 free_dist = front_collision.distance - self.scale_x + distance_to_travel
 
                 #   cancel speed going directly into the obstacle

@@ -76,7 +76,7 @@ class RemoteController(Entity):
                                          held_keys['d'] or held_keys["right arrow"])
             snapshot.car_position = self.car.world_position
             snapshot.car_speed = self.car.speed
-            print(f"Recording frame: actual car.speed = {self.car.speed}, snapshot.car_speed = {snapshot.car_speed}")
+            # print(f"Recording frame: actual car.speed = {self.car.speed}, snapshot.car_speed = {snapshot.car_speed}")  # Commented for cleaner output
             snapshot.car_angle = self.car.rotation_y
             snapshot.rotation_speed = self.car.rotation_speed
             snapshot.raycast_distances = self.car.multiray_sensor.collect_sensor_values()
@@ -143,7 +143,7 @@ class RemoteController(Entity):
         while len(self.client_commands) > 0:
             try:
                 commands = self.client_commands.parse_next_command()
-                print("Processing command", commands)
+                # print("Processing command", commands)  # Commented for cleaner output
                 if commands[0] == b'push' or commands[0] == b'release':
                     if commands[1] == b'forward':
                         held_keys['w'] = commands[0] == b'push'

@@ -37,6 +37,13 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
     # Sort checkpoints by ID to ensure correct order
     sorted_checkpoints = sorted(checkpoints, key=lambda cp: cp['checkpoint_id'])
 
+    # Determine finish line checkpoint ID dynamically (the checkpoint with highest ID)
+    # This allows the finish line to change after checkpoint filtering
+    finish_line_checkpoint_id = max(cp['checkpoint_id'] for cp in checkpoints) if checkpoints else FINISH_LINE_CHECKPOINT_ID
+
+    # Get all checkpoint IDs for iteration (after filtering, this may not be a continuous range)
+    all_checkpoint_ids = sorted([cp['checkpoint_id'] for cp in checkpoints])
+
     # Track ALL checkpoint crossings (not just first)
     # This handles self-crossing tracks where checkpoints may be crossed multiple times
     checkpoint_crossings = {}  # Map checkpoint_id -> [frame1, frame2, ...] of ALL crossings
@@ -44,7 +51,7 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
     # Check each checkpoint for crossing
     for checkpoint in sorted_checkpoints:
         checkpoint_id = checkpoint['checkpoint_id']
-        is_finish_line = (checkpoint_id == FINISH_LINE_CHECKPOINT_ID)
+        is_finish_line = (checkpoint_id == finish_line_checkpoint_id)
 
         # Initialize list for this checkpoint
         if checkpoint_id not in checkpoint_crossings:
@@ -76,8 +83,8 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
     checkpoint_frames = {}  # Map checkpoint_id -> frame (for compatibility)
     last_valid_frame = 0  # Frame of the last valid checkpoint
 
-    # Try to build sequence [1, 2, 3, 4, ...]
-    for expected_id in range(1, NUM_CHECKPOINTS + 1):
+    # Iterate through actual checkpoint IDs (after filtering, this may not be continuous)
+    for expected_id in all_checkpoint_ids:
         # Check if this checkpoint was crossed
         if expected_id not in checkpoint_crossings or len(checkpoint_crossings[expected_id]) == 0:
             # Checkpoint never crossed - sequence ends here
@@ -95,11 +102,11 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
             break
 
         # Special handling for finish line - must have all previous checkpoints
-        if expected_id == FINISH_LINE_CHECKPOINT_ID:
-            # Check if all other checkpoints were crossed
+        if expected_id == finish_line_checkpoint_id:
+            # Check if all other checkpoints were crossed (all IDs except finish line)
             all_others_crossed = all(
                 cp_id in checkpoint_frames
-                for cp_id in range(1, FINISH_LINE_CHECKPOINT_ID)
+                for cp_id in all_checkpoint_ids if cp_id != finish_line_checkpoint_id
             )
             if not all_others_crossed:
                 break  # Can't count finish line yet
@@ -121,9 +128,9 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
     fitness_components['checkpoint_bonus'] = checkpoint_points
 
     # Finish line speed bonus: reward faster lap completion
-    if FINISH_LINE_CHECKPOINT_ID in crossed_ids and genome_size is not None:
+    if finish_line_checkpoint_id in crossed_ids and genome_size is not None:
         # Get the frame when finish line was crossed
-        finish_line_frame = checkpoint_frames[FINISH_LINE_CHECKPOINT_ID]
+        finish_line_frame = checkpoint_frames[finish_line_checkpoint_id]
         # Calculate bonus: more frames saved = higher bonus
         frames_saved = genome_size - finish_line_frame
         finish_bonus = frames_saved * FINISH_LINE_SPEED_BONUS_FACTOR
@@ -208,7 +215,7 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
         print("  --- Fitness Breakdown ---")
         print(f"  Checkpoint bonus:      {fitness_components['checkpoint_bonus']:+8.1f}  ({len(crossed_ids)} checkpoints × {CHECKPOINT_BONUS})")
         if fitness_components['finish_line_speed_bonus'] > 0:
-            finish_frame = checkpoint_frames[FINISH_LINE_CHECKPOINT_ID]
+            finish_frame = checkpoint_frames[finish_line_checkpoint_id]
             frames_saved = int(fitness_components['finish_line_speed_bonus'] / FINISH_LINE_SPEED_BONUS_FACTOR)
             print(f"  Finish line bonus:     {fitness_components['finish_line_speed_bonus']:+8.1f}  (completed in {finish_frame} frames, saved {frames_saved} frames × {FINISH_LINE_SPEED_BONUS_FACTOR})")
         if fitness_components['progress_bonus'] > 0:
