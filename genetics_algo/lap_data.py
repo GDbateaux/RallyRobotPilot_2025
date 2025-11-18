@@ -15,7 +15,7 @@ from config import RECORDED_LAP_PATH, NUM_CHECKPOINTS, CHECKPOINT_WIDTH, SEGMENT
 
 # Import SensingSnapshot for saving evolved runs
 sys.path.insert(0, str(Path(__file__).parent.parent))
-from rallyrobopilot.sensing_message import SensingSnapshot
+from rallyrobopilot_novisual.sensing_message import SensingSnapshot
 
 # Global cache for loaded data
 _cached_data = None
