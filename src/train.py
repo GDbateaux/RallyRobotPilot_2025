@@ -13,6 +13,8 @@ from tqdm import tqdm
 
 data_dir = Path(__file__).parent.parent / "data/simple_track"
 full_dataset = DrivingDataset(data_dir, n_frames=N_FRAMES, control_delay=CONTROL_DELAY)
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 train_ratio = 0.8
 n_total = len(full_dataset)
@@ -25,10 +27,24 @@ train_dataset, val_dataset = random_split(
     generator=torch.Generator().manual_seed(42),
 )
 
-train_loader = DataLoader(train_dataset, batch_size=64, shuffle=True)
-val_loader = DataLoader(val_dataset, batch_size=64, shuffle=False)
-
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+num_workers = 8
+pin_memory = (device.type == "cuda")
+train_loader = DataLoader(
+    train_dataset,
+    batch_size=64,
+    shuffle=True,
+    num_workers=num_workers,
+    pin_memory=pin_memory,
+    persistent_workers=True
+)
+val_loader = DataLoader(
+    val_dataset,
+    batch_size=64,
+    shuffle=False,
+    num_workers=num_workers,
+    pin_memory=pin_memory,
+    persistent_workers=True
+)
 
 sample_img, _ = full_dataset[0]
 C, H, W = sample_img.shape
@@ -37,7 +53,7 @@ model = DrivingCNN((C, H, W)).to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
 
 train_losses, val_losses = [], []
-pos_weight = torch.tensor([1.0, 4.0, 2.0, 2.0], device=device)
+pos_weight = torch.tensor([1.0, 5.0, 2.0, 2.0], device=device)
 criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
 
@@ -124,4 +140,8 @@ plt.title("Learning curve - BCE")
 plt.legend()
 plt.grid(True)
 plt.tight_layout()
+
+PLOT_PATH = Path(__file__).parent.parent / "data/models/training_curve.png"
+plt.savefig(PLOT_PATH)
+print(f"Training curve saved to {PLOT_PATH}")
 plt.show()
