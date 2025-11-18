@@ -86,7 +86,7 @@ FINISH_LINE_MIN_FRAME = 50    # Minimum frame before finish line can be crossed
 # ============================================================================
 # POPULATION SETTINGS
 # ============================================================================
-POPULATION_SIZE = 100          # Number of individuals per generation
+POPULATION_SIZE = 60          # Number of individuals per generation
                               # Small (3-5): Fast, good for testing
                               # Medium (8-12): Balanced
                               # Large (15-20): Slower but more thorough
@@ -94,7 +94,7 @@ POPULATION_SIZE = 100          # Number of individuals per generation
 # ============================================================================
 # GENERATION SETTINGS
 # ============================================================================
-NUM_GENERATIONS_INITIAL = 40   # Initial generations to try
+NUM_GENERATIONS_INITIAL = 5   # Initial generations to try
                               # Training stops early if solution found
 
 EXTRA_GENERATIONS_AFTER_FINISH = 5  # Continue for N generations after finish line crossed

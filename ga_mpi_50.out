@@ -1,0 +1,358 @@
+==============================================================
+SLURM Job Configuration
+==============================================================
+Job ID: 50
+Nodes: 1
+Tasks per node: 12
+CPUs per task: 1
+Total MPI processes: 12
+Total parallel workers: 12
+Start time: Tue Nov 18 07:37:13 AM CET 2025
+==============================================================
+
+Launching MPI genetic algorithm...
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+package_folder: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/.venv/lib/python3.13/site-packages/ursina
+asset_folder: scripts_mpi
+======================================================================
+MPI CONFIGURATION
+======================================================================
+Total MPI processes: 12
+Master rank: 0
+Worker ranks: 1-11
+======================================================================
+
+CPUs per MPI rank: 1
+Total parallel workers: 12
+
+======================================================================
+GENETIC ALGORITHM - MPI DISTRIBUTED
+======================================================================
+
+Track: SlightlyHarder
+
+Step 1: Loading recorded lap...
+Loading recorded lap from: runs/slightlyharder_recorded_1.npz
+✓ Loaded 837 snapshots
+=== Cleaning Recording ===
+Removed 2 idle frames from start
+Original frames: 837
+Cleaned frames: 835
+✓ Loaded and cleaned: 835 frames
+
+Step 2: Creating checkpoints...
+✓ Created 39 checkpoints (including finish line)
+
+Step 2.5: Filtering checkpoints (removing 2 checkpoints)...
+Checkpoint filtering: 39 → 37 checkpoints
+Removed checkpoint IDs: [9, 10]
+New finish line checkpoint ID: 37
+
+Step 3: Calculating genome length...
+✓ Genome length: 835.0 frames
+
+Step 4: Broadcasting setup data to all MPI ranks...
+✓ All ranks ready
+
+Step 5: Initializing collision system on all ranks...
+Loading collision mesh from: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/assets/SlightlyHarder/SlightlyHarderTrack.obj
+  ✓ Track collision enabled
+Loading obstacle collision mesh: /home/teclis/Projects/ML/ML_car/RallyRobotPilot_2025/assets/SlightlyHarder/SlightlyHarderObstacles.obj
+  ✓ Obstacle collision enabled: SlightlyHarderObstacles.obj
+✓ Loaded collision geometry: track + 1 obstacles
+✓ Collision system initialized (headless)
+✓ Collision system ready on all ranks
+
+Step 6: Extracting track contours for visualizations...
+✓ Track contours extracted
+
+Step 7: Creating initial population...
+✓ Created 60 individuals
+
+Step 8: Evolution (5 generations)...
+======================================================================
+
+Generation 1/5
+----------------------------------------------------------------------
+  Evaluating 60 individuals (distributed across 12 MPI ranks)... 
+  [DEBUG] Population distribution:
+  Total individuals: 60
+  MPI ranks: 12
+  Base chunk size: 5
+  Remainder: 0 (first 0 ranks get +1 individual)
+  Distribution:
+    Rank 0: individuals 0-4 (5 total)
+    Rank 1: individuals 5-9 (5 total)
+    Rank 2: individuals 10-14 (5 total)
+    Rank 3: individuals 15-19 (5 total)
+    Rank 4: individuals 20-24 (5 total)
+    Rank 5: individuals 25-29 (5 total)
+    Rank 6: individuals 30-34 (5 total)
+    Rank 7: individuals 35-39 (5 total)
+    Rank 8: individuals 40-44 (5 total)
+    Rank 9: individuals 45-49 (5 total)
+    Rank 10: individuals 50-54 (5 total)
+    Rank 11: individuals 55-59 (5 total)
+  [Rank 0] Received 5 individuals, using sequential evaluation
+  [Rank 1] Received 5 individuals, using sequential evaluation
+  [Rank 2] Received 5 individuals, using sequential evaluation
+  [Rank 6] Received 5 individuals, using sequential evaluation
+  [Rank 3] Received 5 individuals, using sequential evaluation
+  [Rank 4] Received 5 individuals, using sequential evaluation
+  [Rank 5] Received 5 individuals, using sequential evaluation
+  [Rank 7] Received 5 individuals, using sequential evaluation
+  [Rank 8] Received 5 individuals, using sequential evaluation
+  [Rank 9] Received 5 individuals, using sequential evaluation
+  [Rank 10] Received 5 individuals, using sequential evaluation
+  [Rank 11] Received 5 individuals, using sequential evaluation
+
+  [DEBUG] Starting sequential evaluation...
+
+  [DEBUG] Gathering results from all ranks...
+  [DEBUG] All results gathered to master
+
+✓
+  Best fitness:  667.4
+  Avg fitness:   667.4
+  Checkpoints:   1
+  Collisions:    60/60
+  Best: 1 checkpoints [1] (collision at frame 25)
+  Creating next generation... ✓
+
+Generation 2/5
+----------------------------------------------------------------------
+  Evaluating 60 individuals (distributed across 12 MPI ranks)... 
+  [DEBUG] Population distribution:
+  Total individuals: 60
+  MPI ranks: 12
+  Base chunk size: 5
+  Remainder: 0 (first 0 ranks get +1 individual)
+  Distribution:
+    Rank 0: individuals 0-4 (5 total)
+    Rank 1: individuals 5-9 (5 total)
+    Rank 2: individuals 10-14 (5 total)
+    Rank 3: individuals 15-19 (5 total)
+    Rank 4: individuals 20-24 (5 total)
+    Rank 5: individuals 25-29 (5 total)
+    Rank 6: individuals 30-34 (5 total)
+    Rank 7: individuals 35-39 (5 total)
+    Rank 8: individuals 40-44 (5 total)
+    Rank 9: individuals 45-49 (5 total)
+    Rank 10: individuals 50-54 (5 total)
+    Rank 11: individuals 55-59 (5 total)
+  [Rank 0] Received 5 individuals, using sequential evaluation
+  [Rank 1] Received 5 individuals, using sequential evaluation
+  [Rank 2] Received 5 individuals, using sequential evaluation
+  [Rank 3] Received 5 individuals, using sequential evaluation
+  [Rank 4] Received 5 individuals, using sequential evaluation
+  [Rank 5] Received 5 individuals, using sequential evaluation
+  [Rank 6] Received 5 individuals, using sequential evaluation
+  [Rank 7] Received 5 individuals, using sequential evaluation
+  [Rank 8] Received 5 individuals, using sequential evaluation
+  [Rank 9] Received 5 individuals, using sequential evaluation
+  [Rank 10] Received 5 individuals, using sequential evaluation
+  [Rank 11] Received 5 individuals, using sequential evaluation
+
+  [DEBUG] Starting sequential evaluation...
+✓ Track visualization saved: plots/track_gen1.png
+
+  [DEBUG] Gathering results from all ranks...
+  [DEBUG] All results gathered to master
+
+✓
+  Best fitness:  1470.0
+  Avg fitness:   453.0
+  Checkpoints:   2
+  Collisions:    60/60
+  Best: 2 checkpoints [1, 2] (collision at frame 40)
+  Creating next generation... ✓
+
+Generation 3/5
+----------------------------------------------------------------------
+  Evaluating 60 individuals (distributed across 12 MPI ranks)... 
+  [DEBUG] Population distribution:
+  Total individuals: 60
+  MPI ranks: 12
+  Base chunk size: 5
+  Remainder: 0 (first 0 ranks get +1 individual)
+  Distribution:
+    Rank 0: individuals 0-4 (5 total)
+    Rank 1: individuals 5-9 (5 total)
+    Rank 2: individuals 10-14 (5 total)
+    Rank 3: individuals 15-19 (5 total)
+    Rank 4: individuals 20-24 (5 total)
+    Rank 5: individuals 25-29 (5 total)
+    Rank 6: individuals 30-34 (5 total)
+    Rank 7: individuals 35-39 (5 total)
+    Rank 8: individuals 40-44 (5 total)
+    Rank 9: individuals 45-49 (5 total)
+    Rank 10: individuals 50-54 (5 total)
+    Rank 11: individuals 55-59 (5 total)
+  [Rank 0] Received 5 individuals, using sequential evaluation
+  [Rank 1] Received 5 individuals, using sequential evaluation
+  [Rank 2] Received 5 individuals, using sequential evaluation
+  [Rank 3] Received 5 individuals, using sequential evaluation
+  [Rank 4] Received 5 individuals, using sequential evaluation
+  [Rank 5] Received 5 individuals, using sequential evaluation
+  [Rank 6] Received 5 individuals, using sequential evaluation
+  [Rank 7] Received 5 individuals, using sequential evaluation
+  [Rank 8] Received 5 individuals, using sequential evaluation
+  [Rank 9] Received 5 individuals, using sequential evaluation
+  [Rank 10] Received 5 individuals, using sequential evaluation
+  [Rank 11] Received 5 individuals, using sequential evaluation
+
+  [DEBUG] Starting sequential evaluation...
+✓ Track visualization saved: plots/track_gen2.png
+
+  [DEBUG] Gathering results from all ranks...
+  [DEBUG] All results gathered to master
+
+✓
+  Best fitness:  1521.8
+  Avg fitness:   704.6
+  Checkpoints:   2
+  Collisions:    60/60
+  Best: 2 checkpoints [1, 2] (collision at frame 40)
+  Creating next generation... ✓
+
+Generation 4/5
+----------------------------------------------------------------------
+  Evaluating 60 individuals (distributed across 12 MPI ranks)... 
+  [DEBUG] Population distribution:
+  Total individuals: 60
+  MPI ranks: 12
+  Base chunk size: 5
+  Remainder: 0 (first 0 ranks get +1 individual)
+  Distribution:
+    Rank 0: individuals 0-4 (5 total)
+    Rank 1: individuals 5-9 (5 total)
+    Rank 2: individuals 10-14 (5 total)
+    Rank 3: individuals 15-19 (5 total)
+    Rank 4: individuals 20-24 (5 total)
+    Rank 5: individuals 25-29 (5 total)
+    Rank 6: individuals 30-34 (5 total)
+    Rank 7: individuals 35-39 (5 total)
+    Rank 8: individuals 40-44 (5 total)
+    Rank 9: individuals 45-49 (5 total)
+    Rank 10: individuals 50-54 (5 total)
+    Rank 11: individuals 55-59 (5 total)
+  [Rank 0] Received 5 individuals, using sequential evaluation
+  [Rank 1] Received 5 individuals, using sequential evaluation
+  [Rank 2] Received 5 individuals, using sequential evaluation
+  [Rank 3] Received 5 individuals, using sequential evaluation
+  [Rank 4] Received 5 individuals, using sequential evaluation
+  [Rank 5] Received 5 individuals, using sequential evaluation
+  [Rank 6] Received 5 individuals, using sequential evaluation
+  [Rank 7] Received 5 individuals, using sequential evaluation
+  [Rank 8] Received 5 individuals, using sequential evaluation
+  [Rank 9] Received 5 individuals, using sequential evaluation
+  [Rank 10] Received 5 individuals, using sequential evaluation
+  [Rank 11] Received 5 individuals, using sequential evaluation
+
+  [DEBUG] Starting sequential evaluation...
+✓ Track visualization saved: plots/track_gen3.png
+
+  [DEBUG] Gathering results from all ranks...
+  [DEBUG] All results gathered to master
+
+✓
+  Best fitness:  2422.1
+  Avg fitness:   1290.3
+  Checkpoints:   3
+  Collisions:    60/60
+  Best: 3 checkpoints [1, 2, 3] (collision at frame 56)
+  Creating next generation... ✓
+
+Generation 5/5
+----------------------------------------------------------------------
+  Evaluating 60 individuals (distributed across 12 MPI ranks)... 
+  [DEBUG] Population distribution:
+  Total individuals: 60
+  MPI ranks: 12
+  Base chunk size: 5
+  Remainder: 0 (first 0 ranks get +1 individual)
+  Distribution:
+    Rank 0: individuals 0-4 (5 total)
+    Rank 1: individuals 5-9 (5 total)
+    Rank 2: individuals 10-14 (5 total)
+    Rank 3: individuals 15-19 (5 total)
+    Rank 4: individuals 20-24 (5 total)
+    Rank 5: individuals 25-29 (5 total)
+    Rank 6: individuals 30-34 (5 total)
+    Rank 7: individuals 35-39 (5 total)
+    Rank 8: individuals 40-44 (5 total)
+    Rank 9: individuals 45-49 (5 total)
+    Rank 10: individuals 50-54 (5 total)
+    Rank 11: individuals 55-59 (5 total)
+  [Rank 0] Received 5 individuals, using sequential evaluation
+  [Rank 1] Received 5 individuals, using sequential evaluation
+  [Rank 2] Received 5 individuals, using sequential evaluation
+  [Rank 3] Received 5 individuals, using sequential evaluation
+  [Rank 4] Received 5 individuals, using sequential evaluation
+  [Rank 5] Received 5 individuals, using sequential evaluation
+  [Rank 6] Received 5 individuals, using sequential evaluation
+  [Rank 7] Received 5 individuals, using sequential evaluation
+  [Rank 8] Received 5 individuals, using sequential evaluation
+  [Rank 9] Received 5 individuals, using sequential evaluation
+  [Rank 10] Received 5 individuals, using sequential evaluation
+  [Rank 11] Received 5 individuals, using sequential evaluation
+
+  [DEBUG] Starting sequential evaluation...
+✓ Track visualization saved: plots/track_gen4.png
+
+  [DEBUG] Gathering results from all ranks...
+  [DEBUG] All results gathered to master
+
+✓
+  Best fitness:  2461.8
+  Avg fitness:   1511.6
+  Checkpoints:   3
+  Collisions:    60/60
+  Best: 3 checkpoints [1, 2, 3] (collision at frame 57)
+
+Waiting for background visualizations to complete...
+  ✓ Visualization saved (gen 1)
+  ✓ Visualization saved (gen 2)
+  ✓ Visualization saved (gen 3)
+  ✓ Visualization saved (gen 4)
+✓ Track visualization saved: plots/track_gen5.png
+  ✓ Visualization saved (gen 5)
+✓ All visualizations complete
+
+======================================================================
+EVOLUTION COMPLETE
+======================================================================
+
+Step 9: Saving best individual to file...
+✓ Saved to: ga_runs/run_1.npz
+  Fitness: 2461.8
+  Checkpoints: 3 [1, 2, 3]
+  Collision at frame: 57
+
+✓ All steps complete
+
+
+==============================================================
+Job completed: Tue Nov 18 07:38:29 AM CET 2025
+==============================================================
