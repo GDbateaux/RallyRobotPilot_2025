@@ -36,8 +36,8 @@ class DrivingDataset(Dataset):
                 all_images.append(stacked)
                 all_controls.append(target)
 
-        self.images = np.array(all_images, dtype=np.float32)
-        self.controls = np.array(all_controls, dtype=np.float32)
+        self.images = all_images
+        self.controls = all_controls
 
     def __len__(self):
         return len(self.images)

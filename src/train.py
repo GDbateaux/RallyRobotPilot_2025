@@ -13,10 +13,10 @@ from dataset import DrivingDataset
 from model import DrivingCNN
 from torch.utils.data import DataLoader, random_split
 
-data_dir = Path(__file__).parent.parent / "data/simple_track"
+
+data_dir = Path(__file__).parent.parent / "data/simple_track_2"
 full_dataset = DrivingDataset(data_dir, n_frames=N_FRAMES, control_delay=CONTROL_DELAY)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
 
 train_ratio = 0.8
 n_total = len(full_dataset)
@@ -26,28 +26,22 @@ n_val = n_total - n_train
 train_dataset, val_dataset = random_split(
     full_dataset,
     [n_train, n_val],
-    generator=torch.Generator().manual_seed(42),
+    generator=torch.Generator(),
 )
 
-num_workers = 8
-pin_memory = (device.type == "cuda")
+num_workers = 1
+pin_memory = False
 
 train_loader = DataLoader(
     train_dataset,
     batch_size=64,
     shuffle=True,
-    num_workers=num_workers,
-    pin_memory=pin_memory,
-    persistent_workers=True
 )
 
 val_loader = DataLoader(
     val_dataset,
     batch_size=64,
     shuffle=False,
-    num_workers=num_workers,
-    pin_memory=pin_memory,
-    persistent_workers=True
 )
 
 sample_img, _ = full_dataset[0]
@@ -57,7 +51,7 @@ model = DrivingCNN((C, H, W)).to(device)
 optimizer = optim.Adam(model.parameters(), lr=1e-4, weight_decay=1e-5)
 
 train_losses, val_losses = [], []
-pos_weight = torch.tensor([1.0, 5.0, 2.0, 2.0], device=device)
+pos_weight = torch.tensor([1.0, 3.5, 1.5, 1.5], device=device)
 criterion = nn.BCEWithLogitsLoss(pos_weight=pos_weight)
 
 
@@ -104,7 +98,7 @@ def eval_one_epoch(model, loader, device):
     return total_loss / total_n
 
 
-num_epochs = 60
+num_epochs = 30
 
 best_val_loss = float("inf")
 best_epoch = -1

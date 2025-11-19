@@ -42,7 +42,6 @@ class DrivingCNN(nn.Module):
 
             nn.Linear(50, 10),
             nn.ReLU(),
-            nn.Dropout(p=0.5),
 
             nn.Linear(10, 4)
         )
