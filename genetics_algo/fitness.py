@@ -239,5 +239,105 @@ def calculate_fitness(simulation_result, checkpoints, debug=True, genome_size=No
         'crossed_in_order': crossed_in_order,
         'collision': simulation_result['collision_detected'],
         'frames_to_last_checkpoint': frames_to_last_checkpoint,
-        'frames_simulated': simulation_result['frames_simulated']
+        'frames_simulated': simulation_result['frames_simulated'],
+        # NEW: Data for trajectory enhancement
+        'checkpoint_frames': checkpoint_frames,  # Map: checkpoint_id -> frame
+        'fitness_components': fitness_components
     }
+
+
+def enhance_trajectory_with_fitness(trajectory, fitness_result, simulation_result, checkpoints, genome_size=None):
+    """
+    Enhance trajectory by adding checkpoints_crossed and cumulative_fitness to each frame.
+
+    This allows later optimizations to resume simulation from any frame with complete state.
+
+    Args:
+        trajectory: List of trajectory frames from simulation
+        fitness_result: Result from calculate_fitness()
+        simulation_result: Result from simulate_individual()
+        checkpoints: Checkpoint data
+        genome_size: Size of genome (for finish line bonus calculation)
+
+    Returns:
+        Enhanced trajectory with checkpoints_crossed and cumulative_fitness per frame
+    """
+    checkpoint_frames = fitness_result['checkpoint_frames']  # Map: checkpoint_id -> frame
+    fitness_components = fitness_result['fitness_components']
+
+    # Build reverse lookup: frame -> list of checkpoints crossed at that frame
+    frame_to_checkpoints = {}
+    for checkpoint_id, frame_num in checkpoint_frames.items():
+        if frame_num not in frame_to_checkpoints:
+            frame_to_checkpoints[frame_num] = []
+        frame_to_checkpoints[frame_num].append(checkpoint_id)
+
+    # Sort checkpoints by ID for each frame
+    for frame_num in frame_to_checkpoints:
+        frame_to_checkpoints[frame_num].sort()
+
+    # Enhance each trajectory frame
+    checkpoints_crossed_so_far = []
+    cumulative_fitness = 0.0
+
+    for i, frame_data in enumerate(trajectory):
+        frame_num = frame_data['frame']
+
+        # Check if any checkpoints were crossed at this frame
+        if frame_num in frame_to_checkpoints:
+            for checkpoint_id in frame_to_checkpoints[frame_num]:
+                checkpoints_crossed_so_far.append(checkpoint_id)
+                # Add checkpoint bonus
+                cumulative_fitness += CHECKPOINT_BONUS
+
+        # Calculate cumulative fitness at this frame
+        # Components that accumulate per frame:
+        if ENABLE_SURVIVAL_BONUS:
+            cumulative_fitness += SURVIVAL_POINTS_PER_FRAME
+
+        # Speed penalty accumulates with each frame to last checkpoint
+        if len(checkpoints_crossed_so_far) > 0:
+            cumulative_fitness -= SPEED_PENALTY_FACTOR
+
+        # Add enhanced data to frame
+        frame_data['checkpoints_crossed'] = checkpoints_crossed_so_far.copy()
+        frame_data['cumulative_fitness'] = cumulative_fitness
+
+    # Add collision penalty to final frame if collision occurred
+    if simulation_result['collision_detected']:
+        trajectory[-1]['cumulative_fitness'] += COLLISION_PENALTY
+
+    # Add finish line speed bonus if lap was completed
+    finish_line_checkpoint_id = max(cp['checkpoint_id'] for cp in checkpoints) if checkpoints else FINISH_LINE_CHECKPOINT_ID
+    if finish_line_checkpoint_id in checkpoint_frames and genome_size is not None:
+        finish_frame_num = checkpoint_frames[finish_line_checkpoint_id]
+        # Find the trajectory frame and add the bonus
+        for frame_data in trajectory:
+            if frame_data['frame'] >= finish_frame_num:
+                frames_saved = genome_size - finish_frame_num
+                finish_bonus = frames_saved * FINISH_LINE_SPEED_BONUS_FACTOR
+                frame_data['cumulative_fitness'] += finish_bonus
+
+    # Add progress bonus to frames after last checkpoint
+    if len(checkpoint_frames) > 0:
+        last_checkpoint_frame_num = max(checkpoint_frames.values())
+
+        for i, frame_data in enumerate(trajectory):
+            if frame_data['frame'] > last_checkpoint_frame_num:
+                # Calculate progress bonus from last checkpoint to this frame
+                checkpoint_position = trajectory[last_checkpoint_frame_num]['position']
+                current_position = frame_data['position']
+
+                dx = current_position[0] - checkpoint_position[0]
+                dy = current_position[1] - checkpoint_position[1]
+                dz = current_position[2] - checkpoint_position[2]
+                distance_traveled = math.sqrt(dx*dx + dy*dy + dz*dz)
+
+                progress_bonus = distance_traveled * PROGRESS_BONUS_PER_DISTANCE
+                frame_data['cumulative_fitness'] += progress_bonus
+
+    # Add out-of-bounds penalty to final frame if applicable
+    if fitness_components['out_of_bounds_penalty'] < 0:
+        trajectory[-1]['cumulative_fitness'] += fitness_components['out_of_bounds_penalty']
+
+    return trajectory

@@ -44,7 +44,7 @@ from genetics_algo.config import (
 )
 from genetics_algo.track_map import create_track_visualization, extract_track_contours
 from genetics_algo.ga_simple import calculate_genome_length, create_initial_population
-from genetics_algo.simulator import simulate_individual
+from genetics_algo.simulator import simulate_individual, simulate_with_optimization
 from genetics_algo.fitness import calculate_fitness
 from genetics_algo.individual import to_game_format
 from genetics_algo.evolution import (
@@ -61,8 +61,10 @@ from concurrent.futures import ThreadPoolExecutor
 
 class ControlSnapshot:
     """Control snapshot for saving final solution."""
-    def __init__(self, forward, backward, left, right):
+    def __init__(self, forward, backward, left, right, car_position=None, car_speed=None):
         self.current_controls = (forward, backward, left, right)
+        self.car_position = car_position if car_position is not None else (0, 0, 0)
+        self.car_speed = car_speed if car_speed is not None else 0.0
 
 
 # ============================================================================
@@ -98,23 +100,23 @@ def _init_worker(checkpoints, track_path):
         sys.stdout = old_stdout
 
 
-def _evaluate_individual_worker(genome):
+def _evaluate_individual_worker(individual):
     """
     Evaluate a single individual (called by multiprocessing workers).
 
     Args:
-        genome: Individual's genome
+        individual: Individual dict with genome, mutation_frames, trajectory
 
     Returns:
         (simulation_result, fitness_result)
     """
     global _collision_system, _checkpoints
 
-    # Simulate individual
-    sim_result = simulate_individual(genome, _collision_system)
+    # Simulate individual with optimization (uses partial simulation if possible)
+    sim_result = simulate_with_optimization(individual, _collision_system)
 
     # Calculate fitness
-    genome_size = len(genome)
+    genome_size = len(individual['genome'])
     fit_result = calculate_fitness(sim_result, _checkpoints, debug=False, genome_size=genome_size)
 
     return (sim_result, fit_result)
@@ -146,14 +148,9 @@ def evaluate_population_mpi(comm, rank, size, population, checkpoints, track_pat
     Returns:
         (simulation_results, fitness_results) on master, (None, None) on workers
     """
-    # Master: extract genomes from population
-    if is_master(rank):
-        genomes = [ind['genome'] for ind in population]
-    else:
-        genomes = None
-
-    # Scatter genomes to all ranks (with debug output)
-    local_genomes = scatter_population(comm, rank, size, genomes, verbose=verbose)
+    # Scatter population to all ranks (with debug output)
+    # Note: scatter_population handles None population on workers
+    local_individuals = scatter_population(comm, rank, size, population, verbose=verbose)
 
     # Quiet: No per-rank printing (too verbose with 64 ranks)
 
@@ -163,13 +160,13 @@ def evaluate_population_mpi(comm, rank, size, population, checkpoints, track_pat
         ctx = get_context('spawn')
         with ctx.Pool(processes=cpus_per_rank, initializer=_init_worker,
                       initargs=(checkpoints, track_path)) as pool:
-            local_results = pool.map(_evaluate_individual_worker, local_genomes)
+            local_results = pool.map(_evaluate_individual_worker, local_individuals)
     else:
-        # Sequential evaluation (fallback - use existing collision_system)
+        # Sequential evaluation (fallback - use existing collision_system with optimization)
         local_results = []
-        for idx, genome in enumerate(local_genomes):
-            sim_result = simulate_individual(genome, collision_system)
-            genome_size = len(genome)
+        for idx, individual in enumerate(local_individuals):
+            sim_result = simulate_with_optimization(individual, collision_system)
+            genome_size = len(individual['genome'])
             fit_result = calculate_fitness(sim_result, checkpoints, debug=False, genome_size=genome_size)
             local_results.append((sim_result, fit_result))
 
@@ -366,8 +363,8 @@ def main():
         if is_master(rank):
             print("✓")
 
-            # Augment population with results
-            population = augment_population_with_results(population, simulation_results, fitness_results)
+            # Augment population with results (includes trajectory enhancement)
+            population = augment_population_with_results(population, simulation_results, fitness_results, checkpoints)
 
             # Get statistics
             stats = get_population_stats(population)
@@ -455,12 +452,25 @@ def main():
         ga_runs_dir = Path("ga_runs")
         ga_runs_dir.mkdir(exist_ok=True)
 
-        # Convert genome to game format
+        # Convert genome to game format with trajectory data (positions and speeds)
         snapshots = []
-        for gene in best_individual['genome']:
+        trajectory = best_individual.get('trajectory', [])
+
+        for frame_idx, gene in enumerate(best_individual['genome']):
             axis_fb, axis_lr = gene
             forward, backward, left, right = to_game_format(axis_fb, axis_lr)
-            snapshot = ControlSnapshot(forward, backward, left, right)
+
+            # Extract position and speed from trajectory if available
+            if frame_idx < len(trajectory):
+                traj_frame = trajectory[frame_idx]
+                car_position = traj_frame['position']
+                car_speed = traj_frame['speed']
+            else:
+                # Fallback for frames beyond trajectory (shouldn't happen)
+                car_position = (0, 0, 0)
+                car_speed = 0.0
+
+            snapshot = ControlSnapshot(forward, backward, left, right, car_position, car_speed)
             snapshots.append(snapshot)
 
         # Determine next run number

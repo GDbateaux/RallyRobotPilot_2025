@@ -1,19 +1,33 @@
 
 from genetics_algo.selection import select_elite, select_parents, sort_population_by_fitness
 from genetics_algo.mutation import create_children
+from genetics_algo.fitness import enhance_trajectory_with_fitness
 from genetics_algo.config import (
     ELITE_PERCENTAGE, ELITE_OFFSPRING_MULTIPLIER, TOURNAMENT_SIZE,
     MUTATION_WINDOW_SIZE, MUTATION_RATE_NO_CRASH
 )
 
 
-def augment_population_with_results(population, simulation_results, fitness_results):
+def augment_population_with_results(population, simulation_results, fitness_results, checkpoints=None):
     for ind, sim_result, fit_result in zip(population, simulation_results, fitness_results):
         ind['collision_detected'] = sim_result['collision_detected']
         ind['collision_frame'] = sim_result.get('collision_frame')
         ind['fitness'] = fit_result['fitness']
         ind['checkpoints_crossed'] = fit_result['checkpoints_crossed']
         ind['checkpoints_crossed_count'] = fit_result['checkpoints_crossed_count']
+        # Store trajectory data for saving positions and speeds
+        ind['trajectory'] = sim_result['trajectory']
+
+        # Enhance trajectory with checkpoints_crossed and cumulative_fitness per frame
+        if checkpoints is not None:
+            genome_size = len(ind['genome'])
+            ind['trajectory'] = enhance_trajectory_with_fitness(
+                trajectory=ind['trajectory'],
+                fitness_result=fit_result,
+                simulation_result=sim_result,
+                checkpoints=checkpoints,
+                genome_size=genome_size
+            )
 
     return population
 

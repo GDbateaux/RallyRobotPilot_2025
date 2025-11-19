@@ -26,6 +26,9 @@ def mutate_genome(genome, collision_frame, window_size=None, duration_min=None, 
     # Create a copy of the genome
     mutated_genome = copy.deepcopy(genome)
 
+    # Track mutation starting frames for partial simulation optimization
+    mutation_starting_frames = []
+
     # Determine mutation window: [max(0, collision_frame - window), collision_frame]
     window_start = max(0, collision_frame - window_size)
     window_end = collision_frame
@@ -111,6 +114,9 @@ def mutate_genome(genome, collision_frame, window_size=None, duration_min=None, 
             # Normal mutation - use full duration range
             duration = random.randint(duration_min, duration_max)
 
+        # Track the STARTING frame of this mutation (not duration frames)
+        mutation_starting_frames.append(mutate_frame)
+
         # Apply SAME values to all consecutive frames (creates sustained turns/acceleration)
         for i in range(duration):
             frame_idx = mutate_frame + i
@@ -129,7 +135,7 @@ def mutate_genome(genome, collision_frame, window_size=None, duration_min=None, 
 
             mutated_genome[frame_idx] = (current_fb, current_lr)
 
-    return mutated_genome
+    return mutated_genome, mutation_starting_frames
 
 
 def _mutate_value_throttle():
@@ -163,8 +169,11 @@ def mutate_genome_random(genome, duration_min=None, duration_max=None, num_mutat
     # Create a copy of the genome
     mutated_genome = copy.deepcopy(genome)
 
+    # Track mutation starting frames for partial simulation optimization
+    mutation_starting_frames = []
+
     if len(mutated_genome) == 0:
-        return mutated_genome
+        return mutated_genome, mutation_starting_frames
 
     # Perform multiple mutations (1 to num_mutations)
     actual_num_mutations = random.randint(1, num_mutations)
@@ -203,6 +212,9 @@ def mutate_genome_random(genome, duration_min=None, duration_max=None, num_mutat
             # Normal mutation - use full duration range
             duration = random.randint(duration_min, duration_max)
 
+        # Track the STARTING frame of this mutation (not duration frames)
+        mutation_starting_frames.append(mutate_frame)
+
         # Apply SAME values to all consecutive frames (creates sustained turns/acceleration)
         for i in range(duration):
             frame_idx = mutate_frame + i
@@ -221,7 +233,7 @@ def mutate_genome_random(genome, duration_min=None, duration_max=None, num_mutat
 
             mutated_genome[frame_idx] = (current_fb, current_lr)
 
-    return mutated_genome
+    return mutated_genome, mutation_starting_frames
 
 
 def create_children(parents, mutation_window_size=None, mutation_rate_no_crash=None, mutation_duration_min=None, mutation_duration_max=None):
@@ -237,33 +249,40 @@ def create_children(parents, mutation_window_size=None, mutation_rate_no_crash=N
     children = []
 
     for parent in parents:
+        # Deep copy the entire parent (preserves trajectory and all other fields)
+        child = copy.deepcopy(parent)
+
         if parent.get('collision_detected', False):
             # Crashed: mutate near crash point
-            child_genome = mutate_genome(
+            child_genome, mutation_frames = mutate_genome(
                 parent['genome'],
                 parent['collision_frame'],
                 window_size=mutation_window_size,
                 duration_min=mutation_duration_min,
                 duration_max=mutation_duration_max
             )
+            child['genome'] = child_genome
+            child['mutation_frames'] = mutation_frames
         else:
             # Didn't crash: clone OR randomly mutate
             if random.random() < mutation_rate_no_crash:
                 # Mutate randomly
-                child_genome = mutate_genome_random(
+                child_genome, mutation_frames = mutate_genome_random(
                     parent['genome'],
                     duration_min=mutation_duration_min,
                     duration_max=mutation_duration_max
                 )
+                child['genome'] = child_genome
+                child['mutation_frames'] = mutation_frames
             else:
-                # Clone unchanged
-                child_genome = copy.deepcopy(parent['genome'])
+                # Clone unchanged - no mutations
+                child['mutation_frames'] = []
 
-        children.append({
-            'genome': child_genome,
-            'fitness': None,
-            'collision_detected': None,
-            'collision_frame': None
-        })
+        # Reset fitness and collision data (will be recalculated)
+        child['fitness'] = None
+        child['collision_detected'] = None
+        child['collision_frame'] = None
+
+        children.append(child)
 
     return children

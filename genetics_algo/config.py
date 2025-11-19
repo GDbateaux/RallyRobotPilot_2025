@@ -88,7 +88,7 @@ FINISH_LINE_MIN_FRAME = 50    # Minimum frame before finish line can be crossed
 # ============================================================================
 # POPULATION SETTINGS
 # ============================================================================
-POPULATION_SIZE = 256         # Number of individuals per generation
+POPULATION_SIZE = 176         # Number of individuals per generation
                               # Small (3-5): Fast, good for testing
                               # Medium (8-12): Balanced
                               # Large (15-20): Slower but more thorough
@@ -107,12 +107,12 @@ EXTRA_GENERATIONS_AFTER_FINISH = 5  # Continue for N generations after finish li
 # EVOLUTION STRATEGY
 # ============================================================================
 # Selection
-ELITE_PERCENTAGE = 0.01       # Percentage of population to keep as elite
+ELITE_PERCENTAGE = 0.1       # Percentage of population to keep as elite
                               # These individuals go UNCHANGED to next generation
                               # 0.10 = Top 10% preserved
                               # 0.20 = Top 20% preserved
 
-ELITE_OFFSPRING_MULTIPLIER = 80  # Number of mutated children each elite produces
+ELITE_OFFSPRING_MULTIPLIER = 8  # Number of mutated children each elite produces
                               # These are GUARANTEED offspring from top performers
                               # Example: 5 elite × 4 offspring = 20 children from elite
                               # 0 = Disabled (no guaranteed offspring)
@@ -264,7 +264,7 @@ SAVE_ALL_PLOTS = True        # Save plot for every generation (True) or only fin
 # ============================================================================
 # PERFORMANCE SETTINGS
 # ============================================================================
-NUM_WORKERS = 32            # Number of parallel workers for simulation
+NUM_WORKERS = 22            # Number of parallel workers for simulation
                               # Set to number of CPU cores available
                               # 1 = Sequential (no parallelization)
                               # 20 = Use 20 cores in parallel
