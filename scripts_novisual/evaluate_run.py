@@ -9,6 +9,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from rallyrobopilot_novisual import CollisionSystem
 from genetics_algo.individual import from_game_format
 from genetics_algo.simulator import simulate_individual
+from genetics_algo import config
 
 
 class ControlSnapshot:
@@ -35,16 +36,6 @@ def check_finish_line_crossing(pos1, pos2):
 
 
 def filter_initial_stationary_frames(snapshots, speed_threshold=0.1):
-    """
-    Remove initial frames where the car is stationary AND has no input.
-
-    Args:
-        snapshots: List of ControlSnapshot or SensingSnapshot objects
-        speed_threshold: Speed below which car is considered stationary
-
-    Returns:
-        Filtered list of snapshots
-    """
     if not snapshots:
         return snapshots
 
@@ -128,7 +119,7 @@ def evaluate_run_from_file(run_path, collision_system, min_frame=50, verbose=Tru
     }
 
 
-def evaluate_latest_run(ga_runs_dir="ga_runs_backup", verbose=True):
+def evaluate_latest_run(ga_runs_dir="ga_runs", verbose=True):
     runs_path = Path(ga_runs_dir)
 
     # Find all runs
@@ -178,7 +169,53 @@ def evaluate_latest_run(ga_runs_dir="ga_runs_backup", verbose=True):
     return result
 
 
-def evaluate_all_runs(ga_runs_dir="ga_runs_backup", recorded_runs_dir="runs"):
+def evaluate_recorded_lap(verbose=True):
+    """Evaluate the recorded lap specified in config.RECORDED_LAP_PATH"""
+    recorded_path = Path(config.RECORDED_LAP_PATH)
+
+    if not recorded_path.exists():
+        print(f"✗ Recorded lap not found: {recorded_path}")
+        return None
+
+    if verbose:
+        print("=" * 70)
+        print("EVALUATING RECORDED LAP FROM CONFIG")
+        print(f"Path: {config.RECORDED_LAP_PATH}")
+        print("=" * 70)
+        print()
+
+    # Initialize collision system (suppress output)
+    import io
+    old_stdout = sys.stdout
+    sys.stdout = io.StringIO()
+    collision_system = CollisionSystem("SimpleTrack/track_metadata.json")
+    sys.stdout = old_stdout
+
+    # Evaluate with stationary frame filtering (recorded laps have idle start)
+    result = evaluate_run_from_file(recorded_path, collision_system, min_frame=50, verbose=verbose, filter_stationary=True)
+
+    # Print results
+    print()
+    print("=" * 70)
+    print("RESULTS")
+    print("=" * 70)
+
+    if result['finished']:
+        print(f"✓ Lap completed in {result['frames_to_finish']} frames")
+        print(f"  Time: {result['frames_to_finish'] * 0.1:.1f} seconds (at 10 FPS)")
+    else:
+        print(f"✗ Did not finish lap")
+        if result['collision_frame']:
+            print(f"  Collision at frame {result['collision_frame']}")
+        else:
+            print(f"  Ran for {result['total_frames']} frames without finishing")
+
+    print()
+
+    return result
+
+
+def evaluate_all_runs(ga_runs_dir="ga_runs", recorded_runs_dir="runs"):
     # Collect runs from both directories
     ga_runs_path = Path(ga_runs_dir)
     recorded_runs_path = Path(recorded_runs_dir)
@@ -286,13 +323,16 @@ def main():
     import argparse
 
     parser = argparse.ArgumentParser(description="Evaluate GA runs")
-    parser.add_argument("--all", action="store_true", help="Evaluate all runs and rank them")
+    parser.add_argument("--all", action="store_true", help="Evaluate all runs from ga_runs/ and runs/ and rank them")
     parser.add_argument("--run", type=str, help="Evaluate specific run file")
+    parser.add_argument("--recorded", action="store_true", help="Evaluate the recorded lap from config.RECORDED_LAP_PATH")
 
     args = parser.parse_args()
 
     if args.all:
         evaluate_all_runs()
+    elif args.recorded:
+        evaluate_recorded_lap()
     elif args.run:
         run_path = Path(args.run)
         if not run_path.exists():
