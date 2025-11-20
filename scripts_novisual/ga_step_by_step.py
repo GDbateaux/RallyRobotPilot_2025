@@ -10,7 +10,7 @@ from genetics_algo.config import (
     NUM_CHECKPOINTS, CHECKPOINT_WIDTH, POPULATION_SIZE,
     NUM_GENERATIONS_INITIAL, SAVE_ALL_PLOTS, NUM_WORKERS,
     FINISH_LINE_CHECKPOINT_ID, EXTRA_GENERATIONS_AFTER_FINISH,
-    TRACK_NAME, CHECKPOINTS_TO_REMOVE
+    TRACK_NAME, CHECKPOINTS_TO_REMOVE, CHECKPOINT_ADJUSTMENTS
 )
 from genetics_algo.track_map import create_track_visualization
 from genetics_algo.ga_simple import calculate_genome_length, create_initial_population
@@ -142,9 +142,56 @@ def main():
     checkpoints = intermediate_checkpoints + [finish_line]
     print(f"✓ Created {len(checkpoints)} checkpoints (including finish line)")
 
-    # Step 2.5: Filter and renumber checkpoints (if configured)
+    # Step 2.5: Apply checkpoint adjustments (if configured)
+    # IMPORTANT: Apply BEFORE removal/renumbering so IDs match original checkpoint numbers
+    if CHECKPOINT_ADJUSTMENTS:
+        print(f"\nStep 2.5: Applying checkpoint adjustments ({len(CHECKPOINT_ADJUSTMENTS)} adjustments)...")
+        print(f"         (using ORIGINAL checkpoint IDs before removal)")
+        for adjustment in CHECKPOINT_ADJUSTMENTS:
+            cp_id, delta_x, delta_z, rotation_deg = adjustment
+
+            # Find checkpoint by its checkpoint_id (not array index)
+            matching_checkpoints = [cp for cp in checkpoints if cp.get('checkpoint_id') == cp_id]
+
+            if not matching_checkpoints:
+                print(f"  WARNING: Checkpoint ID {cp_id} not found, skipping")
+                continue
+
+            cp = matching_checkpoints[0]
+
+            # Apply position adjustment to center
+            old_center = cp['center']
+            new_center = (
+                old_center[0] + delta_x,
+                old_center[1],  # Y unchanged
+                old_center[2] + delta_z
+            )
+
+            # Apply rotation adjustment to orientation
+            old_orientation = cp.get('orientation', 0.0)
+            new_orientation = old_orientation + rotation_deg
+
+            # Recalculate checkpoint line with new position and rotation
+            import numpy as np
+            x, y, z = new_center
+            angle_rad = np.radians(new_orientation)
+            half_width = cp['width'] / 2.0
+            dx = half_width * np.sin(angle_rad)
+            dz = half_width * np.cos(angle_rad)
+
+            # Update all checkpoint fields
+            cp['center'] = new_center
+            cp['point_a'] = (x - dx, y, z - dz)
+            cp['point_b'] = (x + dx, y, z + dz)
+            cp['orientation'] = new_orientation
+
+            print(f"  ✓ Adjusted checkpoint {cp_id}: position +({delta_x:+.1f}, {delta_z:+.1f}), rotation {rotation_deg:+.1f}°")
+
+        print(f"✓ Applied {len(CHECKPOINT_ADJUSTMENTS)} checkpoint adjustments\n")
+
+    # Step 2.6: Filter and renumber checkpoints (if configured)
     if CHECKPOINTS_TO_REMOVE:
-        print(f"\nStep 2.5: Filtering checkpoints (removing {len(CHECKPOINTS_TO_REMOVE)} checkpoints)...")
+        print(f"Step 2.6: Filtering checkpoints (removing {len(CHECKPOINTS_TO_REMOVE)} checkpoints)...")
         checkpoints, finish_line_checkpoint_id = filter_and_renumber_checkpoints(
             checkpoints,
             CHECKPOINTS_TO_REMOVE

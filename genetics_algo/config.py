@@ -3,12 +3,12 @@
 # ============================================================================
 # Track name (corresponds to directory in assets/)
 # Options: "SimpleTrack", "NotSoSimpleTrack", "SlightlyHarder", etc.
-# TRACK_NAME = "SlightlyHarder"
-TRACK_NAME = "SimpleTrack"
+TRACK_NAME = "SlightlyHarder"
+# TRACK_NAME = "SimpleTrack"
 
 # Path to recorded lap data
-# RECORDED_LAP_PATH = "runs/slightlyharder_recorded_1.npz"
-RECORDED_LAP_PATH = "runs/simpletrack_recorded_1.npz"
+RECORDED_LAP_PATH = "runs/slightlyharder_recorded_1.npz"
+# RECORDED_LAP_PATH = "runs/simpletrack_recorded_1.npz"
 
 # Track geometry
 NUM_CHECKPOINTS = 40          # Total checkpoints in the track (for lap subdivision - DO NOT CHANGE)
@@ -18,10 +18,31 @@ FINISH_LINE_CHECKPOINT_ID = NUM_CHECKPOINTS - 1   # Checkpoint ID for the finish
 CHECKPOINT_WIDTH = 50.0       # Width of checkpoint lines (meters)
 
 # Checkpoint removal configuration
-CHECKPOINTS_TO_REMOVE = [9, 10]    # List of checkpoint IDs to remove from the track
+CHECKPOINTS_TO_REMOVE = [10, 11]    # List of checkpoint IDs to remove from the track
                               # Example: [17, 30, 39] removes checkpoints 17, 30, and 39
                               # Remaining checkpoints keep their physical positions but are renumbered sequentially
                               # [] = No checkpoints removed (default)
+
+# ============================================================================
+# CHECKPOINT ADJUSTMENTS
+# ============================================================================
+# Fine-tune individual checkpoint positions and rotations
+# Applied AFTER checkpoint removal/renumbering
+# Format: [checkpoint_id, delta_x, delta_z, rotation_degrees]
+#   - checkpoint_id: The checkpoint number (after removal/renumbering)
+#   - delta_x: Movement in X direction (meters)
+#   - delta_z: Movement in Z direction (meters)
+#   - rotation_degrees: Rotation adjustment (degrees)
+#
+# Example:
+#   [8, -10, -10, 20] = Move checkpoint 8 by (-10, -10) and rotate by 20°
+#   [12, 5, 0, -15]   = Move checkpoint 12 by (5, 0) and rotate by -15°
+CHECKPOINT_ADJUSTMENTS = [
+    # Add your adjustments here:
+    [8, -5, -22, 60],
+    [9, 20, -40, -90],
+]
+# ============================================================================
 
 # ============================================================================
 # GENOME SETTINGS
@@ -99,7 +120,7 @@ POPULATION_SIZE = 176         # Number of individuals per generation
 NUM_GENERATIONS_INITIAL = 100   # Initial generations to try
                               # Training stops early if solution found
 
-EXTRA_GENERATIONS_AFTER_FINISH = 5  # Continue for N generations after finish line crossed
+EXTRA_GENERATIONS_AFTER_FINISH = 2  # Continue for N generations after finish line crossed
                               # Allows optimization after completing the lap
                               # Set to 0 to stop immediately when finish line reached
 
@@ -107,7 +128,7 @@ EXTRA_GENERATIONS_AFTER_FINISH = 5  # Continue for N generations after finish li
 # EVOLUTION STRATEGY
 # ============================================================================
 # Selection
-ELITE_PERCENTAGE = 0.1       # Percentage of population to keep as elite
+ELITE_PERCENTAGE = 0.05       # Percentage of population to keep as elite
                               # These individuals go UNCHANGED to next generation
                               # 0.10 = Top 10% preserved
                               # 0.20 = Top 20% preserved
@@ -220,7 +241,7 @@ COLLISION_SAFETY_BUFFER = 0.0  # Extra distance for collision detection (units)
                               # Higher = safer but GA learns more cautious paths
 
 # Car width for multi-ray collision detection
-CAR_WIDTH = 2.0              # Width of car for side collision detection (units)
+CAR_WIDTH = 2.7              # Width of car for side collision detection (units)
                               # Used to offset left/right raycasts during turns
                               # Half-width offset on each side (1.0 left, 1.0 right)
                               # 1.5 = Narrow (tight cornering, may clip walls in real game)
@@ -238,7 +259,7 @@ PHYSICS_SUBSTEPS = 2          # Number of physics updates per frame
                               # Higher = more accurate but slower simulation
 
 # Proximity collision detection (prevents getting too close to obstacles)
-MIN_SAFE_DISTANCE = 2.5       # Minimum safe distance from obstacles (units)
+MIN_SAFE_DISTANCE = 2.7       # Minimum safe distance from obstacles (units)
                               # If any proximity sensor detects obstacle closer than this, treat as collision
                               # 2.0 = Very tight (risky, may graze walls)
                               # 3.0 = Standard (recommended, good safety margin)

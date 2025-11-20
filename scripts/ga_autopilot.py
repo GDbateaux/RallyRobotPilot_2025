@@ -171,42 +171,78 @@ class ReplayController:
 
 if __name__ == "__main__":
     import sys
+    import argparse
     from pathlib import Path
 
     def except_hook(cls, exception, traceback):
         sys.__excepthook__(cls, exception, traceback)
     sys.excepthook = except_hook
 
-    # Find the latest evolved run or use default recorded lap
-    default_recording = RECORDED_LAP_PATH
-    ga_runs_dir = Path("ga_runs")
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(
+        description="Replay a recorded .npz file on the visual game",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Replay a specific GA run
+  python scripts/ga_autopilot.py --run ga_runs/run_10.npz
 
-    recording_path = default_recording  # Default to recorded lap
+  # Replay a manual recording
+  python scripts/ga_autopilot.py --run runs/simpletrack_recorded_1.npz
 
-    if ga_runs_dir.exists():
-        # Find all run_*.npz files
-        evolved_runs = list(ga_runs_dir.glob("run_*.npz"))
-        if evolved_runs:
-            # Extract run numbers and find the highest
-            run_numbers = []
-            for f in evolved_runs:
-                try:
-                    num = int(f.stem.split('_')[1])
-                    run_numbers.append((num, f))
-                except (IndexError, ValueError):
-                    continue
+  # Auto-select latest GA run (default behavior)
+  python scripts/ga_autopilot.py
+        """
+    )
 
-            if run_numbers:
-                # Select the run with highest number
-                latest_run = max(run_numbers, key=lambda x: x[0])[1]
-                recording_path = str(latest_run)
-                print(f"Found evolved run: {recording_path}")
+    parser.add_argument(
+        "--run", "-r",
+        type=str,
+        default=None,
+        help="Path to specific .npz file to replay (overrides auto-selection)"
+    )
+
+    args = parser.parse_args()
+
+    # Determine which recording to use
+    if args.run:
+        # Use user-specified path
+        recording_path = args.run
+        if not Path(recording_path).exists():
+            print(f"ERROR: Specified run file not found: {recording_path}")
+            sys.exit(1)
+        print(f"Using specified run: {recording_path}")
+    else:
+        # Auto-select: Find the latest evolved run or use default recorded lap
+        default_recording = RECORDED_LAP_PATH
+        ga_runs_dir = Path("ga_runs")
+
+        recording_path = default_recording  # Default to recorded lap
+
+        if ga_runs_dir.exists():
+            # Find all run_*.npz files
+            evolved_runs = list(ga_runs_dir.glob("run_*.npz"))
+            if evolved_runs:
+                # Extract run numbers and find the highest
+                run_numbers = []
+                for f in evolved_runs:
+                    try:
+                        num = int(f.stem.split('_')[1])
+                        run_numbers.append((num, f))
+                    except (IndexError, ValueError):
+                        continue
+
+                if run_numbers:
+                    # Select the run with highest number
+                    latest_run = max(run_numbers, key=lambda x: x[0])[1]
+                    recording_path = str(latest_run)
+                    print(f"Auto-selected latest evolved run: {recording_path}")
+                else:
+                    print(f"No evolved runs found, using default: {recording_path}")
             else:
                 print(f"No evolved runs found, using default: {recording_path}")
         else:
-            print(f"No evolved runs found, using default: {recording_path}")
-    else:
-        print(f"ga_runs_backup folder not found, using default: {recording_path}")
+            print(f"ga_runs folder not found, using default: {recording_path}")
 
     app = QtWidgets.QApplication(sys.argv)
 

@@ -10,10 +10,8 @@ __pycache__/
 out/
 ga_runs_backup/
 runs/
-plots/
 
 # Generated data
-*.npz
 *.prof
 *.log
 
